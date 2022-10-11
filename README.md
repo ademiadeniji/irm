@@ -59,7 +59,7 @@ We work on the following domains + tasks:
 
 .column {
   float: left;
-  width: 50%;
+  width: 30%;
   padding: 5px;
 }
 
