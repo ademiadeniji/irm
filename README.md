@@ -21,7 +21,7 @@ In addition, we include a visualization script. You can use this script to see d
 ```sh
 python visualize_irm.py agent=AGENT experiment=YOUR_EXP_NAME domain=DOMAIN restore_snapshot_ts=2000000 restore_snapshot_dir=PATH_TO_PRETRAINED_MODEL
 ```
-<img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=200 height=200>
+<img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500 height=400>
 
 <img src="imgs/correlation.png" alt="correlation analysis" title="correlation analysis">
 
