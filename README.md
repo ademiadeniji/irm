@@ -1,10 +1,12 @@
 # Intrinsic Reward Matching (IRM)
 
-This codebase contains implementation and analysis of IRM from Skill-Based Reinforcement Learning with Intrinsic Reward Matching (Adeniji, Xie et al 2022). IRM leverages the skill discriminator from unsupervised RL pretraining to perform sample-free skill selection for unseen downstream tasks. Before running IRM, you must first pretrain an agent with the unsupervised RL method of your choice.
+This codebase contains implementation and analysis of IRM from Skill-Based Reinforcement Learning with Intrinsic Reward Matching (Adeniji, Xie et al 2022). IRM leverages the skill discriminator from unsupervised RL pretraining to perform sample-free skill selection for unseen downstream tasks. 
 
 <img src="imgs/method.png" alt="irm method figure" title="irm method figure">
 
 This codebase is built on top of the [Contrastive Intrinsic Control (CIC) codebase](https://github.com/rll-research/cic). 
+
+Before running IRM, you must first pretrain an agent with the unsupervised RL method of your choice.
 
 To pretrain an agent `dads` or `cic`, run the following command:
 
