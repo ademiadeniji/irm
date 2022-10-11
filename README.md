@@ -48,14 +48,19 @@ We work on the following domains + tasks:
 | `jaco` | `reach_top_left`, `reach_top_right`, `reach_bottom_left`, `reach_bottom_right` | `jaco_xyz` |
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
-<div class="row">
+<p float="left">
+  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width="50%">
+  <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width="50%">
+</p>
+
+<!-- <div class="row">
   <div class="column">
     <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" style="width:50%">
   </div>
   <div class="column">
     <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" style="width:50%">
   </div>
-</div>
+</div> -->
 
 <!-- .column {
   float: left;
