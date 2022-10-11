@@ -1,4 +1,4 @@
-# IRM
+# Intrinsic Reward Matching (IRM)
 
 <img src="imgs/method.png" alt="irm method figure" title="irm method figure">
 
@@ -48,8 +48,8 @@ We work on the following domains + tasks:
 | `jaco` | `reach_top_left`, `reach_top_right`, `reach_bottom_left`, `reach_bottom_right` | `jaco_xyz` |
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
-<p float="left">
-  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500>
+<p float="middle">
+<!--   <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500> -->
   <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=500>
 </p>
 
