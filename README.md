@@ -50,7 +50,7 @@ We work on the following domains + tasks:
 
 <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=400 height=320>
 
-<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=400 height=320>
+<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=430 height=320>
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
