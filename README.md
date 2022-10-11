@@ -14,7 +14,7 @@ To pretrain an agent `dads` or `cic`, run the following command:
 python pretrain.py agent=AGENT domain=DOMAIN experiment_folder=YOUR_EXP_FOLDER experiment_name=YOUR_EXP_NAME 
 ```
 
-To finetune CIC, run the following command. Make sure to specify the directory of your saved snapshots with `YOUR_EXP_NAME`.
+To finetune your pretrained agent, run the following command. Make sure to specify the directory of your saved snapshots with `YOUR_EXP_NAME`.
 
 ```sh
 python finetune.py agent=AGENT experiment=YOUR_EXP_NAME task=TASK extr_reward=REWARD restore_snapshot_ts=2000000 restore_snapshot_dir=PATH_TO_PRETRAINED_MODEL
