@@ -50,10 +50,10 @@ We work on the following domains + tasks:
 
 <div class="row">
   <div class="column">
-    <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=400 height=320>
+    <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" style="width:100%">
   </div>
   <div class="column">
-    <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=430 height=320>
+    <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" style="width:100%">
   </div>
 </div>
 
