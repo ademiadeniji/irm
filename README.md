@@ -48,9 +48,9 @@ We work on the following domains + tasks:
 | `jaco` | `reach_top_left`, `reach_top_right`, `reach_bottom_left`, `reach_bottom_right` | `jaco_xyz` |
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
-<img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500 height=400>
+<img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=400 height=320>
 
-<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=500 height=400>
+<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=400 height=320>
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
