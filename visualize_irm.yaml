@@ -1,0 +1,68 @@
+defaults:
+  - agent: ddpg
+  - override hydra/launcher: submitit_local
+
+# mode
+reward_free: true
+# task settings
+domain: jaco
+use_custom: true
+obs_type: states # [states, pixels, reduced_states]
+frame_stack: 3 # only works if obs_type=pixels
+action_repeat: 1 # set to 2 for pixels
+discount: 0.99
+time_limit: 5 
+use_time_limit: false
+random_reset: False
+# train settings
+num_train_frames: 2000010
+num_seed_frames: 4000
+# eval settings
+eval_every_frames: 2000
+num_eval_episodes: 10
+# experiment
+experiment_folder: test
+experiment_name: test
+# snapshot
+snapshots: [100000, 500000, 1000000, 2000000]
+snapshot_dir: ./pretrained_model
+# restore
+restore_snapshot_dir: None
+restore_snapshot_ts: 100000
+# replay buffer
+replay_buffer_size: 100000
+replay_buffer_num_workers: 4
+batch_size: ${agent.batch_size}
+nstep: ${agent.nstep}
+# misc
+seed: 1
+device: cuda:0
+save_video: true
+save_train_video: false
+use_tb: false
+use_wandb: false
+# IRM settings
+z_id: random_skill
+learnable_reward_scale: None
+epic_gradient_descent_steps: 5000
+z_lr: None
+num_cem_iterations: 5
+num_cem_samples: 1000
+num_cem_elites: 100
+num_env_skill_rollouts: 10
+grid_search_size: None
+
+hydra:
+  run:
+    dir: ./experiments/viz/${experiment_folder}/${experiment_name}
+  sweep:
+    dir: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}_${experiment}
+    subdir: ${hydra.job.num}
+  launcher:
+    timeout_min: 4300
+    cpus_per_task: 10
+    gpus_per_node: 1
+    tasks_per_node: 1
+    mem_gb: 160
+    nodes: 1
+    submitit_folder: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}_${experiment}/.slurm

@@ -1,0 +1,67 @@
+# @package agent
+_target_: agent.dads.DADSAgent
+name: dads
+num_seed_frames: ${num_seed_frames}
+action_repeat: ${action_repeat}
+obs_type: ??? # to be specified later
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+# train settings
+device: ${device}
+lr: 1e-4
+use_tb: ${use_tb}
+use_wandb: ${use_wandb}
+# DADS Settings
+skill_dim: 64
+update_skill_every_step: 50 
+reward_free: ${reward_free}
+update_rl_every_steps: 2000
+num_rl_updates: 64
+update_dads_every_steps: 2000
+num_dads_updates: 128
+num_neg_samples: 500 # DADS Appendix A.4
+distribution: mixture_gaussian # pmixture_gaussian, gaussian]
+variance: 1 
+num_components: 4 # MoG
+max_batch: 2000
+p: 0.0 # dropout
+hidden_dim: 1024
+batch_size: 1024
+scale: 1.0
+# SAC Settings
+feature_dim: 1024
+stddev_schedule: 0.2
+stddev_clip: 0.3
+actor_lr: 1e-4
+critic_lr: 1e-4
+critic_target_tau: 0.01
+learnable_temperature: False
+nstep: 3
+num_expl_steps: 2000
+discount: ${discount}
+# debugging
+freeze_rl: False 
+freeze_dads: False 
+init_critic: true
+init_rl: True # false if train rl from scratch
+
+# extrinsic rewards
+extr_reward: goal_top_right
+extr_reward_seq: []
+# IRM settings
+z_id: ${z_id}
+epic_gradient_descent_steps: ${epic_gradient_descent_steps}
+z_lr: ${z_lr}
+num_cem_iterations: ${num_cem_iterations}
+num_cem_samples: ${num_cem_samples}
+num_cem_elites: ${num_cem_elites}
+learnable_reward_scale: false
+matching_metric: epic # [epic, l2, l1]
+# EPIC settings
+pearson_setting: full_rand # [full_rand, uniform]
+canonical_setting: full_rand # [full_rand, uniform]
+num_epic_skill: 200 # number of skills to sample for any optimization of epic loss
+pearson_samples: 1024 
+canonical_samples: 1024
+
+

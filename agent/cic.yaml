@@ -1,0 +1,58 @@
+# @package agent
+_target_: agent.cic.CICAgent
+name: cic
+num_seed_frames: ${num_seed_frames}
+action_repeat: ${action_repeat}
+obs_type: ??? # to be specified later
+obs_shape: ??? # to be specified later
+action_shape: ??? # to be specified later
+# train settings
+device: ${device}
+lr: 1e-4
+use_tb: ${use_tb}
+use_wandb: ${use_wandb}
+# CIC settings
+skill_dim: 64
+update_skill_every_step: 50
+project_skill: true
+reward_free: ${reward_free}
+alpha: 0.9
+use_batchnorm: False
+critic_target_tau: 0.01
+p: 0.0 # dropout
+hidden_dim: 1024
+batch_size: 1024
+# DDPG settings
+feature_dim: 1024
+stddev_schedule: linear(1,0.1,100000)
+stddev_clip: 0.3
+nstep: 3
+num_expl_steps: 2000
+discount: ${discount}
+# debugging
+freeze_rl: False
+freeze_cic: False 
+init_rl: true 
+init_critic: true
+
+# extrinsic rewards
+extr_reward: goal_1p4_0p8
+extr_reward_seq: []
+# IRM settings
+z_id: ${z_id}
+epic_gradient_descent_steps: ${epic_gradient_descent_steps}
+z_lr: ${z_lr}
+num_cem_iterations: ${num_cem_iterations}
+num_cem_samples: ${num_cem_samples}
+num_cem_elites: ${num_cem_elites}
+learnable_reward_scale: ${learnable_reward_scale}
+matching_metric: epic # [epic, l2, l1]
+# EPIC settings
+pearson_setting: full_rand # [full_rand, uniform]
+canonical_setting: full_rand # [full_rand, uniform]
+pearson_setting_sequencing: prev_rollout # [prev_rollout, prev_rollout_last]
+canonical_setting_sequencing: gaussian_1 # [gaussian_{float}]
+num_epic_skill: 5000 # number of skills to sample for any optimization of epic loss
+pearson_samples: 1024 
+canonical_samples: 1024
+noise: 1
