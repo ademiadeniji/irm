@@ -49,8 +49,8 @@ We work on the following domains + tasks:
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
 <p float="left">
-  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width="50%">
-  <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width="50%">
+  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=200>
+  <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=200>
 </p>
 
 <!-- <div class="row">
