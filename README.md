@@ -57,7 +57,7 @@ We work on the following domains + tasks:
   </div>
 </div>
 
-.column {
+<!-- .column {
   float: left;
   width: 30%;
   padding: 5px;
@@ -67,7 +67,7 @@ We work on the following domains + tasks:
   content: "";
   clear: both;
   display: table;
-}
+} -->
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
