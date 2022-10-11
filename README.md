@@ -21,8 +21,6 @@ In addition, we include a visualization script. You can use this script to see d
 ```sh
 python visualize_irm.py agent=AGENT experiment=YOUR_EXP_NAME domain=DOMAIN restore_snapshot_ts=2000000 restore_snapshot_dir=PATH_TO_PRETRAINED_MODEL
 ```
-<!-- <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500 height=400> -->
-
 <img src="imgs/correlation.png" alt="correlation analysis" title="correlation analysis">
 
 For sequential task finetuning (or IRM visualizations), add the flags `extr_reward_seq=[REW1,REW2,REW3]` and `extr_reward=REW1`.
@@ -50,7 +48,9 @@ We work on the following domains + tasks:
 | `jaco` | `reach_top_left`, `reach_top_right`, `reach_bottom_left`, `reach_bottom_right` | `jaco_xyz` |
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
-<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=750 height=600>
+<img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500 height=400>
+
+<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=500 height=400>
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
