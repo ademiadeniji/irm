@@ -66,3 +66,4 @@ You may also enable logging to wandb and view logs there.
 ### todos
 - formatting (at end)
 - fix conda env
+- add pretrained agent checkpoints for the fetch tasks so researchers can replicate without pretraining
