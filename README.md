@@ -57,7 +57,17 @@ We work on the following domains + tasks:
   </div>
 </div>
 
-<img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=430 height=320>
+.column {
+  float: left;
+  width: 50%;
+  padding: 5px;
+}
+
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
