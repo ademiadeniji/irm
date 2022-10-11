@@ -49,30 +49,9 @@ We work on the following domains + tasks:
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
 <p float="left">
-  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=200>
-  <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=200>
+  <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" width=500>
+  <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" width=500>
 </p>
-
-<!-- <div class="row">
-  <div class="column">
-    <img src="imgs/heat.png" alt="heatmap visualization" title="heatmap visualization" style="width:50%">
-  </div>
-  <div class="column">
-    <img src="imgs/fetch.png" alt="Fetch domain" title="Fetch domain" style="width:50%">
-  </div>
-</div> -->
-
-<!-- .column {
-  float: left;
-  width: 30%;
-  padding: 5px;
-}
-
-.row::after {
-  content: "";
-  clear: both;
-  display: table;
-} -->
 
 ### Monitoring
 Logs are stored in the `exp_local` folder. To launch tensorboard run:
