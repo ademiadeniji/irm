@@ -1,5 +1,7 @@
 # IRM
 
+<img src="imgs/method.png" alt="irm method figure" title="irm method figure">
+
 This codebase is built on top of the [Contrastive Intrinsic Control (CIC) codebase](https://github.com/rll-research/cic). 
 
 To pre-train an agent `dads` or `cic`, run the following command:
