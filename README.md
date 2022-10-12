@@ -1,6 +1,6 @@
 # Intrinsic Reward Matching (IRM)
 
-This codebase contains implementation, visualizations, and analysis of IRM from Skill-Based Reinforcement Learning with Intrinsic Reward Matching (Adeniji, Xie et al 2022). IRM leverages the skill discriminator from unsupervised RL pretraining to perform environment-interaction-free skill sequencing for unseen downstream tasks. 
+This codebase contains implementation, visualizations, and analysis of IRM from Skill-Based Reinforcement Learning with Intrinsic Reward Matching (Adeniji and Xie et al 2022). IRM leverages the skill discriminator from unsupervised RL pretraining to perform environment-interaction-free skill sequencing for unseen downstream tasks. 
 
 <img src="imgs/method.png" alt="irm method figure" title="irm method figure">
 
