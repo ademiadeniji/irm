@@ -117,11 +117,11 @@ class Workspace:
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None,
             camera_id= 0 if 'quadruped' not in self.cfg.domain else 2,
-            use_wandb=self.cfg.use_wandb, frame_lst= 'fetch' in self.cfg.domain)
+            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier'])
         self.train_video_recorder = TrainVideoRecorder(
             self.work_dir if cfg.save_train_video else None,
             camera_id= 0 if 'quadruped' not in self.cfg.domain else 2,
-            use_wandb=self.cfg.use_wandb, frame_lst= 'fetch' in self.cfg.domain)
+            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier'])
 
         self.timer = utils.Timer()
         self._global_step = 0

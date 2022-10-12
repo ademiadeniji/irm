@@ -38,7 +38,8 @@ After the instalation ends you can activate your environment with
 ```sh
 conda activate irm
 ```
-todo: install gym
+
+Note that we use a [custom implementation](https://github.com/amberxie88/gym) of OpenAI Gym's Fetch environment.
 
 ## Available Domains
 We work on the following domains + tasks:

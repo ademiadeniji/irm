@@ -1,0 +1,9 @@
+idea/
+.ipynb_checkpoints/
+data/
+*.pyc
+__pycache__
+experiments/
+.vscode
+eval_*/
+debug_*/
