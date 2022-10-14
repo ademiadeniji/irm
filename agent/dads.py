@@ -96,13 +96,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DADSAgent(SACAgent):
     def __init__(self, update_skill_every_step, skill_dim, scale, 
-                 z_id, 
-                 freeze_rl, freeze_dads, num_seed_frames, 
-                 action_repeat, p, init_rl, pearson_setting, canonical_setting, num_epic_skill, 
+                 z_id, freeze_rl, freeze_dads, num_seed_frames, action_repeat, 
+                 p, init_rl, pearson_setting, canonical_setting, num_epic_skill, 
                  pearson_samples, canonical_samples, discount, update_dads_every_steps, 
-                 num_neg_samples, update_rl_every_steps,
-                 num_dads_updates, variance, num_components, max_batch, distribution,
-                 extr_reward, extr_reward_seq, **kwargs):
+                 num_neg_samples, update_rl_every_steps, num_dads_updates, variance, 
+                 num_components, max_batch, distribution, extr_reward, extr_reward_seq, 
+                 **kwargs):
         self.skill_dim = skill_dim
         self.update_skill_every_step = update_skill_every_step
         self.update_rl_every_steps = update_rl_every_steps

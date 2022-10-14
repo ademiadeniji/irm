@@ -219,11 +219,10 @@ class Reward(nn.Module):
 class CICAgent(DDPGAgent):
     # Contrastive Intrinsic Control (CIC)
     def __init__(self, update_skill_every_step, skill_dim, project_skill, 
-                 alpha, z_id,
-                 freeze_rl, freeze_cic, num_seed_frames, 
-                 action_repeat, p, init_rl, pearson_setting, canonical_setting, pearson_setting_sequencing, 
-                 canonical_setting_sequencing, num_epic_skill, use_batchnorm,
-                 pearson_samples, canonical_samples, discount, **kwargs):
+                 alpha, z_id, freeze_rl, freeze_cic, num_seed_frames, 
+                 action_repeat, p, init_rl, pearson_setting, canonical_setting, 
+                 pearson_setting_sequencing, canonical_setting_sequencing, num_epic_skill, 
+                 use_batchnorm, pearson_samples, canonical_samples, discount, **kwargs):
         self.skill_dim = skill_dim
         self.update_skill_every_step = update_skill_every_step
         self.project_skill = project_skill
