@@ -48,8 +48,8 @@ We work on the following domains + tasks:
 | `fetch_reach` | `goal_0.5_0.5_0.5`, `goal_1_1.2_1`  | `fetch_reach_xyz` |
 | `fetch_push` | `goal_barrier1`, `goal_barrier2`, `goal_barrier3` | `fetch_push_xy` |
 | `fetch_barrier` | `goal_barrier1`, `goal_barrier2`, `goal_barrier3` | `fetch_push_xy` |
-| `walker` | `stand`, `walk`, `run`, `flip` | `quadruped_velocity` |
-| `quadruped` | `walk`, `run`, `stand`, `jump` | `walker_delta_xyz` |
+| `walker` | `stand`, `walk`, `run`, `flip` | `walker_delta_xyz` |
+| `quadruped` | `walk`, `run`, `stand`, `jump` | `quadruped_velocity` |
 | `jaco` | `reach_top_left`, `reach_top_right`, `reach_bottom_left`, `reach_bottom_right` | `jaco_xyz` |
 | `plane` | `goal_top_right`, `goal_top_left` | `states`
 
@@ -66,7 +66,13 @@ tensorboard --logdir exp_local
 
 You may also enable logging to wandb and view logs there.
 
+### Citation
+If you use this code in your own research, please consider citing:
+```sh
+todo
+```
+
 ### todos
 - formatting (at end)
-- fix conda env
 - add pretrained agent checkpoints for the fetch tasks so researchers can replicate without pretraining
+- citation

@@ -100,11 +100,12 @@ class DADSAgent(SACAgent):
                  freeze_rl, freeze_dads, num_seed_frames, 
                  action_repeat, p, init_rl, pearson_setting, canonical_setting, num_epic_skill, 
                  pearson_samples, canonical_samples, discount, update_dads_every_steps, 
-                 num_neg_samples,
+                 num_neg_samples, update_rl_every_steps,
                  num_dads_updates, variance, num_components, max_batch, distribution,
                  extr_reward, extr_reward_seq, **kwargs):
         self.skill_dim = skill_dim
         self.update_skill_every_step = update_skill_every_step
+        self.update_rl_every_steps = update_rl_every_steps
         self.scale = scale
         self.z_id = z_id
         self.freeze_rl = freeze_rl
@@ -132,7 +133,7 @@ class DADSAgent(SACAgent):
         # create actor and critic
         super().__init__(**kwargs)
 
-        # create cic first
+        # create dads first
         self.dads = DADS(self.discr_obs_dim, skill_dim,
                            kwargs['hidden_dim'], num_components, distribution, self.obs_type, 
                            p, variance).to(kwargs['device'])
@@ -272,9 +273,9 @@ class DADSAgent(SACAgent):
             batch, self.device)
 
         with torch.no_grad():
-            cic_obs, aug_obs = self.process_observation(obs)
-            cic_next_obs, aug_next_obs = self.process_observation(next_obs)
-        return dict(cic_obs=cic_obs, cic_next_obs=cic_next_obs, action=action,
+            dads_obs, aug_obs = self.process_observation(obs)
+            dads_next_obs, aug_next_obs = self.process_observation(next_obs)
+        return dict(dads_obs=dads_obs, dads_next_obs=dads_next_obs, action=action,
             extr_reward=extr_reward, skill=skill, replay_id=replay_id,
             aug_obs=aug_obs, aug_next_obs=aug_next_obs, discount=discount)
 
@@ -288,9 +289,9 @@ class DADSAgent(SACAgent):
         return batch
 
     def relabel_reward(self, all_batch):
-        cic_obs, skill, cic_next_obs = all_batch['cic_obs'], all_batch['skill'], all_batch['cic_next_obs'] 
+        dads_obs, skill, dads_next_obs = all_batch['dads_obs'], all_batch['skill'], all_batch['dads_next_obs'] 
         if self.reward_free:
-            intr_reward, rew_info = self.compute_intr_reward(cic_obs, skill, cic_next_obs, None)
+            intr_reward, rew_info = self.compute_intr_reward(dads_obs, skill, dads_next_obs, None)
             reward = intr_reward
         else:
             reward = extr_reward
@@ -308,8 +309,8 @@ class DADSAgent(SACAgent):
             if step % self.update_dads_every_steps == 0:
                 for _ in range(self.num_dads_updates):
                     batch = self.get_batch(all_batch, replay_loader.batch_size)
-                    metrics.update(self.update_dads(batch['cic_obs'], 
-                            batch['skill'], batch['cic_next_obs'], step))
+                    metrics.update(self.update_dads(batch['dads_obs'], 
+                            batch['skill'], batch['dads_next_obs'], step))
                     logger.log_metrics(metrics, self.grad_steps, ty='train')
                     self.grad_steps += 1
 
@@ -319,7 +320,7 @@ class DADSAgent(SACAgent):
                 for _ in range(self._num_rl_updates):
                     batch = self.get_batch(all_batch, replay_loader.batch_size)
                     aug_obs, aug_next_obs, skill = batch['aug_obs'], batch['aug_next_obs'], batch['skill']
-                    cic_obs, cic_next_obs, action = batch['cic_obs'], batch['cic_next_obs'], batch['action']
+                    dads_obs, dads_next_obs, action = batch['dads_obs'], batch['dads_next_obs'], batch['action']
                     discount, reward = batch['discount'], batch['reward']
 
                     # extend observations with skill

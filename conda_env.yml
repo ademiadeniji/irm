@@ -30,3 +30,5 @@ dependencies:
     - wandb==0.11.1
     - moviepy==1.0.3
     - git+https://github.com/amberxie88/gym.git
+    - dm_env==1.5
+    - dm_control==1.0.7
