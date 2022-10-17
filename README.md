@@ -69,7 +69,8 @@ You may also enable logging to wandb and view logs there.
 ### Citation
 If you use this code in your own research, please consider citing:
 ```sh
-todo
+A. Adeniji, A. Xie, and P. Abbeel. Skill-based reinforcement learning with intrinsic reward
+matching, 2022. URL https://arxiv.org/abs/2210.07426.
 ```
 
 ### todos
