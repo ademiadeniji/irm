@@ -74,6 +74,4 @@ matching, 2022. URL https://arxiv.org/abs/2210.07426.
 ```
 
 ### todos
-- formatting (at end)
-- add pretrained agent checkpoints for the fetch tasks so researchers can replicate without pretraining
-- citation
+- add pretrained agent checkpoints for the fetch tasks so researchers can replicate
