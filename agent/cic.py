@@ -297,7 +297,7 @@ class CICAgent(DDPGAgent):
             skill = self.irm_cem(bounds).cpu().numpy()
         elif self.z_id == "irm_gradient_descent":
             skill = self.irm_gradient_descent(bounds).cpu().detach().numpy()
-        elif self.z_id in ["env_rollout", "irm_random_iter", "grid_search", "env_rollout_cem", "env_rollout_iter"]:
+        elif self.z_id in ["env_rollout", "irm_random_iter", "grid_search", "env_rollout_cem", "env_rollout_iter", "reward_relabel"]:
             return # need to take env steps
         else:
             raise ValueError('Must select a finetuning mode')

@@ -32,6 +32,7 @@ restore_snapshot_ts: 0
 # replay buffer
 replay_buffer_size: 100000
 replay_buffer_num_workers: 4
+save_replay_buffer: None
 batch_size: ${agent.batch_size}
 nstep: ${agent.nstep}
 # misc

@@ -97,20 +97,19 @@ class Workspace:
         self.data_specs, self.meta_specs = data_specs, meta_specs
 
         # create data storage
-        self.replay_storage = ReplayBufferStorage(data_specs, meta_specs,
-                                                  self.work_dir / 'buffer')
+        self.replay_storage = ReplayBufferStorage(data_specs, meta_specs, self.work_dir / 'buffer', False)
 
         # create replay buffer
         if self.cfg.agent.name == "dads":
             self.replay_loader = DADSReplayBuffer(self.replay_storage,
                                                 cfg.replay_buffer_size,
                                                 cfg.batch_size, cfg.replay_buffer_num_workers,
-                                                False, cfg.nstep, cfg.discount, cfg.batch_size)
+                                                cfg.save_replay_buffer, cfg.nstep, cfg.discount, cfg.batch_size)
         else: 
-            self.replay_loader = make_replay_loader(
+            self.replay_loader, self.replay_buffer = make_replay_loader(
                 self.replay_storage, cfg.replay_buffer_size,
                 cfg.batch_size, cfg.replay_buffer_num_workers,
-                False, cfg.nstep, cfg.discount)
+                cfg.save_replay_buffer, cfg.nstep, cfg.discount)
             self._replay_iter = None
 
         # create video recorders

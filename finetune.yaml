@@ -54,6 +54,7 @@ num_cem_iterations: 5
 num_cem_samples: 1000
 num_cem_elites: 100
 grid_search_size: 0.1
+replay_dir: None
 
 hydra:
   run:

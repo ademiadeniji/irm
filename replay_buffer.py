@@ -33,13 +33,19 @@ def load_episode(fn):
 
 
 class ReplayBufferStorage:
-    def __init__(self, data_specs, meta_specs, replay_dir):
+    def __init__(self, data_specs, meta_specs, replay_dir, load_data):
         self._data_specs = data_specs
         self._meta_specs = meta_specs
         self._replay_dir = replay_dir
-        if self._replay_dir.exists():
-            shutil.rmtree(self._replay_dir)
-        replay_dir.mkdir(exist_ok=True)
+        if load_data:
+            if not self._replay_dir.exists():
+                raise ValueError("No data to load")
+        else:
+            if self._replay_dir.exists():
+                raise ValueError("Already data at specified replay dir")
+            else:
+                replay_dir.mkdir()
+                
         self._current_episode = defaultdict(list)
         self._num_episodes = 0
         self._num_transitions = 0
@@ -104,6 +110,23 @@ class ReplayBuffer(IterableDataset):
         self._samples_since_last_fetch = fetch_every
         self._save_snapshot = save_snapshot
         self.skill_duration = skill_duration
+
+    def _load(self):
+        try:
+            worker_id = torch.utils.data.get_worker_info().id
+        except:
+            worker_id = 0
+        eps_fns = sorted(self._storage._replay_dir.glob('*.npz'))
+        for eps_fn in eps_fns:
+            if self._size > self._max_size:
+                break
+            eps_idx, eps_len = [int(x) for x in eps_fn.stem.split('_')[1:]]
+            if eps_idx % self._num_workers != worker_id:
+                continue
+            episode = load_episode(eps_fn)
+            self._episode_fns.append(eps_fn)
+            self._episodes[eps_fn] = episode
+            self._size += episode_len(episode)
 
     def _sample_episode(self):
         eps_fn = random.choice(self._episode_fns)
@@ -303,4 +326,4 @@ def make_replay_loader(storage, max_size, batch_size, num_workers,
                                          num_workers=num_workers,
                                          pin_memory=True,
                                          worker_init_fn=_worker_init_fn)
-    return loader
+    return loader, iterable

@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import math
 
 torch.backends.cudnn.benchmark = True
-
+PRETRAIN_SKILL_UPDATE_EVERY = 50
 
 def make_agent(obs_type, obs_spec, action_spec, num_expl_steps, cfg):
     cfg.obs_type = obs_type
@@ -72,7 +72,7 @@ class Workspace:
                                     random_reset=cfg.random_reset, time_limit=time_limit)
 
         
-        assert self.cfg.z_id in ['irm_random', 'irm_cem', 'irm_gradient_descent', 'irm_random_iter', 'random_skill', 'env_rollout', 'env_rollout_cem', 'grid_search', 'env_rollout_iter']
+        assert self.cfg.z_id in ['irm_random', 'irm_cem', 'irm_gradient_descent', 'irm_random_iter', 'random_skill', 'env_rollout', 'env_rollout_cem', 'grid_search', 'env_rollout_iter', 'reward_relabel']
         self.z_id = self.cfg.z_id
 
         num_expl_steps = 0
@@ -86,7 +86,7 @@ class Workspace:
                                 cfg.agent)
 
         # initialize from pretrained
-        if self.cfg.restore_snapshot_ts > 0:
+        if self.cfg.restore_snapshot_ts > 0 and os.path.exists(self.cfg.restore_snapshot_dir):
             if self.cfg.agent.name in ["cic", "dads"]:
                 pretrained_agent = self.load_snapshot()['agent']
                 self.agent.init_from(pretrained_agent)
@@ -102,9 +102,13 @@ class Workspace:
                       specs.Array((1,), np.float32, 'reward'),
                       specs.Array((1,), np.float32, 'discount'))
 
+        if cfg.replay_dir is None:
+            replay_dir = self.work_dir / 'buffer'
+        else:
+            replay_dir = Path(cfg.replay_dir) / 'buffer'
         # create data storage
         self.replay_storage = ReplayBufferStorage(data_specs, meta_specs,
-                                                  self.work_dir / 'buffer')
+                                                  replay_dir, cfg.z_id == 'reward_relabel')
 
         # create video recorders
         if self.cfg.task in ["fetch_push", "fetch_barrier"]:
@@ -195,7 +199,7 @@ class Workspace:
         self.agent.skill_duration = self.train_env.step_limit // self.n_rewards
 
         # create replay buffer
-        self.replay_loader = make_replay_loader(self.replay_storage,
+        self.replay_loader, self.replay_buffer = make_replay_loader(self.replay_storage,
                                                 cfg.replay_buffer_size,
                                                 cfg.batch_size,
                                                 cfg.replay_buffer_num_workers,
@@ -302,6 +306,8 @@ class Workspace:
                 self.irm_random_iter()
             elif self.cfg.agent.z_id == "env_rollout_iter":
                 self.env_rollout_iter()
+            elif self.cfg.z_id == 'reward_relabel':
+                self.find_best_skill_relabel()
 
         meta = self.agent.get_ft_meta(episode_step)
         self.replay_storage.add(time_step, meta)
@@ -399,6 +405,26 @@ class Workspace:
                 std = torch.std(elites, dim=0)
             self.agent.ft_skills = [dict(skill=elites[0].cpu().numpy())]
     
+    def find_best_skill_relabel(self):
+        print("loading pretraining data...")
+        self.replay_buffer._load()
+        print("finished loading pretraining data.")
+        with torch.no_grad():
+            max_sk, max_rew = None, float('-inf')
+            for path, ep in self.replay_buffer._episodes.items():
+                obs = ep['observation'][:-1]
+                next_obs = ep['observation'][1:]
+                skill = ep['skill'][:-1]
+                reward = self.agent.extr_rew_fn(torch.from_numpy(obs).to(self.cfg.device), torch.from_numpy(next_obs).to(self.cfg.device), skill)
+                reward = reward.squeeze(-1).reshape(-1, PRETRAIN_SKILL_UPDATE_EVERY)
+                reward = torch.sum(reward, -1)
+                rew, sk_idx = torch.max(reward, 0)
+                if rew > max_rew:
+                    max_sk = skill[PRETRAIN_SKILL_UPDATE_EVERY*sk_idx.item()]
+                    max_rew = rew
+            self.agent.ft_skills = [dict(skill=max_sk)]
+            print(f"Best skill in pretraining replay buffer: {max_sk}")
+    
     def grid_search(self):
         max_sk, max_rew = None, float('-inf')
         curr_sk = np.zeros(self.cfg.agent.skill_dim, dtype=np.float32)
@@ -407,7 +433,7 @@ class Workspace:
             if (max_rew < traj_out['reward']):
                 max_rew = traj_out['reward'] 
                 max_sk = traj_out['skill']
-            curr_sk = curr_sk + self.cfg.agent.grid_search_size
+            curr_sk = curr_sk + self.cfg.grid_search_size
         self.agent.ft_skills = [dict(skill=max_sk)]
 
     def get_epic_obs(self, out, r):
