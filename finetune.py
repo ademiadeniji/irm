@@ -26,7 +26,6 @@ import matplotlib.pyplot as plt
 import math
 
 torch.backends.cudnn.benchmark = True
-PRETRAIN_SKILL_UPDATE_EVERY = 50
 
 def make_agent(obs_type, obs_spec, action_spec, num_expl_steps, cfg):
     cfg.obs_type = obs_type
@@ -102,10 +101,11 @@ class Workspace:
                       specs.Array((1,), np.float32, 'reward'),
                       specs.Array((1,), np.float32, 'discount'))
 
-        if cfg.replay_dir is None:
-            replay_dir = self.work_dir / 'buffer'
-        else:
+        if os.path.exists(cfg.replay_dir):
             replay_dir = Path(cfg.replay_dir) / 'buffer'
+        else:
+            replay_dir = self.work_dir / 'buffer'
+
         # create data storage
         self.replay_storage = ReplayBufferStorage(data_specs, meta_specs,
                                                   replay_dir, cfg.z_id == 'reward_relabel')
@@ -198,6 +198,10 @@ class Workspace:
         self.n_rewards = max(1, len(self.agent.extr_reward_seq))
         self.agent.skill_duration = self.train_env.step_limit // self.n_rewards
 
+        if self.cfg.hrl:
+            import agent.manager as manager
+            self.agent = manager.ManagerAgent(worker_agent=self.agent, obs_shape=self.train_env.observation_spec().shape)
+
         # create replay buffer
         self.replay_loader, self.replay_buffer = make_replay_loader(self.replay_storage,
                                                 cfg.replay_buffer_size,
@@ -237,7 +241,9 @@ class Workspace:
     def eval(self, skill=None):
         episode = 1 
         tls = [self.agent.skill_duration for _ in range(self.n_rewards)]
-        if "goal" in self.agent.extr_reward and self.n_rewards > 1:
+        if self.cfg.hrl:
+            traj_out = self.run_metas([self.agent.get_ft_meta()], tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
+        elif "goal" in self.agent.extr_reward and self.n_rewards > 1:
             traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
         else:
             traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, video=True)
@@ -372,7 +378,10 @@ class Workspace:
             relevant_reward = self.get_extr_reward(episode_step, time_step.reward, proc_prev_obs, proc_obs, None)
             time_step = dmc.update_time_step_reward(time_step, relevant_reward) # only important for replay buffer
             episode_reward += time_step.reward
-            self.replay_storage.add(time_step, meta)
+            if self.cfg.hrl:
+                self.replay_storage.add(time_step, self.agent.meta_action)
+            else:
+                self.replay_storage.add(time_step, meta)
             self.train_video_recorder.record(time_step.observation)
             episode_step += 1
             self._global_step += 1
@@ -406,21 +415,21 @@ class Workspace:
             self.agent.ft_skills = [dict(skill=elites[0].cpu().numpy())]
     
     def find_best_skill_relabel(self):
-        print("loading pretraining data...")
+        print("Loading pretraining data...")
         self.replay_buffer._load()
-        print("finished loading pretraining data.")
+        print("Finished loading pretraining data.")
         with torch.no_grad():
             max_sk, max_rew = None, float('-inf')
             for path, ep in self.replay_buffer._episodes.items():
-                obs = ep['observation'][:-1]
-                next_obs = ep['observation'][1:]
+                obs, _ = self.agent.process_observation(ep['observation'][:-1])
+                next_obs, _ = self.agent.process_observation(ep['observation'][1:])
                 skill = ep['skill'][:-1]
                 reward = self.agent.extr_rew_fn(torch.from_numpy(obs).to(self.cfg.device), torch.from_numpy(next_obs).to(self.cfg.device), skill)
-                reward = reward.squeeze(-1).reshape(-1, PRETRAIN_SKILL_UPDATE_EVERY)
+                reward = reward.squeeze(-1).reshape(-1, self.cfg.update_skill_every_step)
                 reward = torch.sum(reward, -1)
                 rew, sk_idx = torch.max(reward, 0)
                 if rew > max_rew:
-                    max_sk = skill[PRETRAIN_SKILL_UPDATE_EVERY*sk_idx.item()]
+                    max_sk = skill[self.cfg.update_skill_every_step*sk_idx.item()]
                     max_rew = rew
             self.agent.ft_skills = [dict(skill=max_sk)]
             print(f"Best skill in pretraining replay buffer: {max_sk}")
@@ -530,7 +539,7 @@ class Workspace:
             with torch.no_grad(), utils.eval_mode(self.agent):
                 action = self.agent.act(time_step.observation,
                                         meta,
-                                        self.global_step,
+                                        step,
                                         eval_mode=True)
             if "fetch" in self.cfg.task:
                 time_step = self.eval_env.step(action, make_video=video)
@@ -552,7 +561,9 @@ class Workspace:
             self.video_recorder.save(video_name)
 
         out = dict(ep_obs=ep_obs, ep_action=ep_action, reward=total_reward, step=step, time_step=time_step)
-        if "skill" in meta:
+        if self.cfg.hrl:
+            out['skill'] = self.agent.meta_action
+        elif "skill" in meta:
             out['skill'] = meta['skill']
         return out
 
@@ -565,7 +576,10 @@ class Workspace:
         tl_lst = [self.agent.skill_duration for _ in range(self.n_rewards)]
         while eval_until_episode(episode):
             if episode == 0:
-                traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tl_lst, video=True)
+                if self.cfg.hrl:
+                    traj_out = self.run_metas([self.agent.get_ft_meta()], tl_lst=tl_lst, video=True)
+                else:
+                    traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tl_lst, video=True)
             else: 
                 traj_out = self.run_skills([None for _ in range(self.n_rewards)], tl_lst)
             ep_obs = np.array(traj_out['ep_obs'])

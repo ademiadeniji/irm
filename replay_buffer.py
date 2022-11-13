@@ -38,6 +38,7 @@ class ReplayBufferStorage:
         self._meta_specs = meta_specs
         self._replay_dir = replay_dir
         if load_data:
+            print(f"Will attempt to load data from {replay_dir}")
             if not self._replay_dir.exists():
                 raise ValueError("No data to load")
         else:

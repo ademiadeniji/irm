@@ -30,7 +30,7 @@ experiment_name: test
 snapshots: [1000, 100000, 500000, 1000000, 1500000, 2000000]
 snapshot_dir: ./pretrained_model
 # restore
-restore_snapshot_dir: None
+restore_snapshot_dir: ''
 restore_snapshot_ts: 100000
 # replay buffer
 frames_to_collect: 4000 # set this to be the same as num_train_frames to continuously collect
@@ -47,6 +47,7 @@ use_tb: true
 use_wandb: false
 # IRM settings
 z_id: random_skill
+hrl: false
 learnable_reward_scale: False
 epic_gradient_descent_steps: 5000
 z_lr: 5e-3
@@ -54,11 +55,12 @@ num_cem_iterations: 5
 num_cem_samples: 1000
 num_cem_elites: 100
 grid_search_size: 0.1
-replay_dir: None
+replay_dir: ''
+update_skill_every_step: 50
 
 hydra:
   run:
-    dir: ./experiments/finetune/${experiment_folder}/${experiment_name}
+    dir: ./experiments/finetunenorewardfree/${now:%Y.%m.%d.%H%M}_${experiment_folder}/${experiment_name}/${z_id}/seed${seed}
   sweep:
     dir: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}_${experiment}
     subdir: ${hydra.job.num}
