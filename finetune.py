@@ -421,9 +421,14 @@ class Workspace:
         with torch.no_grad():
             max_sk, max_rew = None, float('-inf')
             for path, ep in self.replay_buffer._episodes.items():
-                obs, _ = self.agent.process_observation(ep['observation'][:-1])
-                next_obs, _ = self.agent.process_observation(ep['observation'][1:])
-                skill = ep['skill'][:-1]
+                obs_copy = ep['observation'].copy()
+                skill_copy = ep['skill'].copy()
+                if (ep['observation'].shape[0]-1) % self.cfg.update_skill_every_step != 0:
+                    obs_copy = np.concatenate((obs_copy, np.expand_dims(obs_copy[-1], 0)), 0)
+                    skill_copy = np.concatenate((skill_copy, np.expand_dims(skill_copy[-1], 0)), 0)
+                obs, _ = self.agent.process_observation(obs_copy[:-1])
+                next_obs, _ = self.agent.process_observation(obs_copy[1:])
+                skill = skill_copy[1:]
                 reward = self.agent.extr_rew_fn(torch.from_numpy(obs).to(self.cfg.device), torch.from_numpy(next_obs).to(self.cfg.device), skill)
                 reward = reward.squeeze(-1).reshape(-1, self.cfg.update_skill_every_step)
                 reward = torch.sum(reward, -1)
