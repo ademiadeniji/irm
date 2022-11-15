@@ -18,13 +18,13 @@ if __name__ == '__main__':
         for experiment_csv_path in experiment_csv_paths:
             tokens = str(experiment_csv_path).split('/')
             experiment_name = tokens[-1]
-            task_name = tokens[-2][16:] 
+            task_name = tokens[-2][16:]
             if 'walker' in task_name:
-                ep_len = 100
+                ep_len = 1000
             elif 'jaco' in task_name:
-                ep_len = 125
+                ep_len = 1000
             elif 'quadruped' in task_name:
-                ep_len = 80
+                ep_len = 1000
             zid_csv_paths = glob.glob(experiment_csv_path + "/*")
             colors = ['blue', 'black', 'gray', 'green', 'teal', 'purple', 'indigo']
             i=0
@@ -91,18 +91,13 @@ if __name__ == '__main__':
                 plt.plot(offset_step[:offset_endpoint], seed_mean_reward[:offset_endpoint], label=zid.replace("_", " "), color=colors[i % len(colors)])
                 i += 1
 
-            # print(task_name)
-            # print(zero_shot_means)
-            # print(zero_shot_stds)
-            # print("\n")
-
             plt.xlabel("environment steps")
             plt.ylabel("average return")
             plt.title(task_name.replace("_", " "))
             plt.legend(loc="lower right")
             if task_name == "quadruped_stand":
                 plt.legend(loc="upper right")
-            plot_dir = 'iclr_plots/finetunenorewardfree'
+            plot_dir = 'plots'
             if not os.path.exists(plot_dir):
                 os.mkdir(plot_dir)
             save_path = plot_dir + '/' + task_name + '_' + experiment_name + '.png'
