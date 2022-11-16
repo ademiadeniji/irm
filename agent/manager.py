@@ -176,7 +176,7 @@ class ManagerAgent:
         return None
     
     def find_ft_meta(self, bounds=None):
-        return None
+        return self.worker_agent.find_ft_meta(bounds=bounds)
     
     def get_ft_meta(self, episode_step=None):
         return dict(skill=np.zeros(self.worker_agent.skill_dim).astype(np.float32))

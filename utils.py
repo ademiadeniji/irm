@@ -633,6 +633,8 @@ def get_extr_rew(rew, device):
             goal = [1.31, 0.9]
         elif rew == "goal_barrier3":
             goal = [1.16, 0.9]
+        elif rew == "goal_1_1_0.5":
+            goal = [1, 1, 0.5]
         return goal_reward(device, goal)
     elif rew == "walker_right":
         return walk_right()

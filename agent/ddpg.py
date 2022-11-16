@@ -460,6 +460,8 @@ class DDPGAgent:
                 goals.append(np.array([1, 1.2, 1]))
             elif extr_reward == "goal_1.5_0.3_0.45":
                 goals.append(np.array([1.5, 0.3, 0.45]))
+            elif extr_reward == "goal_1_1_0.5":
+                goals.append(np.array([1, 1, 0.5]))
             elif extr_reward == "goal_barrier1":
                 goals.append(np.array([1.31, 0.6]))
             elif extr_reward == "goal_barrier2":

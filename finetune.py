@@ -242,7 +242,7 @@ class Workspace:
         episode = 1 
         tls = [self.agent.skill_duration for _ in range(self.n_rewards)]
         if self.cfg.hrl:
-            traj_out = self.run_metas([self.agent.get_ft_meta()], tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
+            traj_out = self.run_metas([{'skill': None} for _ in range(self.n_rewards)], tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
         elif "goal" in self.agent.extr_reward and self.n_rewards > 1:
             traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
         else:
