@@ -1,0 +1,30 @@
+# @package irm
+_target_: irm.reward_relabel.RewardRelabel
+name: reward_relabel
+
+update_skill_every_step: ${update_skill_every_step}
+
+# extrinsic rewards
+extr_reward: [goal_1p4_0p8]
+use_handcrafted_task_reward: false
+hrl: ${hrl}
+discount: ${discount}
+
+# EPIC settings
+pearson_setting: full_rand # [full_rand, uniform]
+canonical_setting: full_rand # [full_rand, uniform]
+pearson_setting_sequencing: prev_rollout # [prev_rollout, prev_rollout_last]
+canonical_setting_sequencing: gaussian_1 # [gaussian_{float}]
+pearson_samples: 1024 
+canonical_samples: 1024
+noise: 1
+
+# EPIC ablations
+learnable_reward_scale: false
+matching_metric: epic # [epic, l2, l1]
+
+# logging
+print_every_step: 100
+
+# misc
+device: ${device}

@@ -19,13 +19,3 @@ stddev_clip: 0.3
 nstep: 3
 batch_size: 1024 # 256 for pixels
 init_critic: true
-extr_reward: walker_run
-extr_reward_seq: []
-noise: 1
-learnable_reward_scale: false
-matching_metric: 'epic'
-epic_gradient_descent_steps: ${epic_gradient_descent_steps}
-num_cem_iterations: ${num_cem_iterations}
-num_cem_samples: ${num_cem_samples}
-num_cem_elites: ${num_cem_elites}
-z_lr: 5e-3

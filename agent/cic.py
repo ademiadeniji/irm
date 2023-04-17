@@ -78,6 +78,44 @@ class CIC(nn.Module):
                                             nn.Dropout(p=p), 
                                             nn.Linear(hidden_dim, self.skill_dim))
             bnorm_dim = self.obs_dim
+        elif self.obs_type == "kitchen":
+            self.state_net = nn.Sequential(nn.Linear(21, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), 
+                                            nn.Dropout(p=p),
+                                            nn.Linear(hidden_dim, self.skill_dim))
+
+            self.next_state_net = nn.Sequential(nn.Linear(21, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), 
+                                            nn.Dropout(p=p),
+                                        nn.Linear(hidden_dim, self.skill_dim))
+        
+            self.pred_net = nn.Sequential(nn.Linear(2 * self.skill_dim, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, self.skill_dim))
+            bnorm_dim = self.obs_dim
+        elif self.obs_type == "kitchen_kettle_xy":
+            self.state_net = nn.Sequential(nn.Linear(2, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), 
+                                            nn.Dropout(p=p),
+                                            nn.Linear(hidden_dim, self.skill_dim))
+
+            self.next_state_net = nn.Sequential(nn.Linear(2, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), 
+                                            nn.Dropout(p=p),
+                                        nn.Linear(hidden_dim, self.skill_dim))
+        
+            self.pred_net = nn.Sequential(nn.Linear(2 * self.skill_dim, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+                                            nn.Dropout(p=p), 
+                                            nn.Linear(hidden_dim, self.skill_dim))
+            bnorm_dim = self.obs_dim
         elif self.obs_type == "quad_velocity":
             self.state_net = nn.Sequential(nn.Linear(3, hidden_dim), nn.ReLU(),
                                             nn.Dropout(p=p), 
@@ -134,6 +172,26 @@ class CIC(nn.Module):
                 next_state = self.preprocess_state(next_state)
             next_state = self.state_net(next_state)
             query = self.pred_net(next_state)
+            key = self.skill_net(skill)
+        elif self.obs_type == "kitchen":
+            state = state[:, 9:]  
+            next_state = next_state[:, 9:]
+            if self.use_batchnorm:
+                state = self.preprocess_state(state)
+                next_state = self.preprocess_state(next_state)
+            state = self.state_net(state)
+            next_state = self.next_state_net(next_state)
+            query = self.pred_net(torch.cat([state,next_state],1))
+            key = self.skill_net(skill)
+        elif self.obs_type == "kitchen_kettle_xy":
+            state = state[:, 23:25]  
+            next_state = next_state[:, 23:25]
+            if self.use_batchnorm:
+                state = self.preprocess_state(state)
+                next_state = self.preprocess_state(next_state)
+            state = self.state_net(state)
+            next_state = self.next_state_net(next_state)
+            query = self.pred_net(torch.cat([state,next_state],1))
             key = self.skill_net(skill)
         else:
             if self.use_batchnorm:
@@ -219,30 +277,17 @@ class Reward(nn.Module):
 class CICAgent(DDPGAgent):
     # Contrastive Intrinsic Control (CIC)
     def __init__(self, update_skill_every_step, skill_dim, project_skill, 
-                 alpha, z_id, freeze_rl, freeze_cic, num_seed_frames, 
-                 action_repeat, p, init_rl, pearson_setting, canonical_setting, 
-                 pearson_setting_sequencing, canonical_setting_sequencing, num_epic_skill, 
-                 use_batchnorm, pearson_samples, canonical_samples, discount, **kwargs):
+                 alpha, freeze_rl, freeze_cic, num_seed_frames, 
+                 action_repeat, p, init_rl, use_batchnorm, discount, **kwargs):
         self.skill_dim = skill_dim
         self.update_skill_every_step = update_skill_every_step
         self.project_skill = project_skill
         self.alpha = alpha
-        self.z_id = z_id
         self.freeze_rl = freeze_rl
         self.freeze_cic = freeze_cic
         self.init_rl = init_rl
-        kwargs["meta_dim"] = self.skill_dim
-
-        # epic args
-        self.pearson_setting = pearson_setting 
-        self.canonical_setting = canonical_setting
-        self.pearson_setting_sequencing = pearson_setting_sequencing
-        self.canonical_setting_sequencing = canonical_setting_sequencing
-        self.num_epic_skill = num_epic_skill 
-        self.pearson_samples = pearson_samples
-        self.canonical_samples = canonical_samples
         self.discount = discount
-        self.compute_epic_rew = self.compute_inner_product 
+        kwargs["meta_dim"] = self.skill_dim
 
         # create actor and critic
         super().__init__(**kwargs)
@@ -257,6 +302,8 @@ class CICAgent(DDPGAgent):
                                                 lr = self.lr)
 
         self.cic.train()
+        
+        self.intr_rew = self.compute_inner_product
 
         rms.M = rms.M.to(self.device)
         rms.S = rms.S.to(self.device)
@@ -282,36 +329,8 @@ class CICAgent(DDPGAgent):
         meta['skill'] = skill
         return meta
 
-    def find_ft_meta(self, bounds=None):
-        self.extr_rew_fn = self.get_extr_rew()
-        if self.z_id == "random_skill":
-            if len(self.extr_reward_seq) == 0:
-                skill = np.random.uniform(0,1,self.skill_dim).astype(np.float32)
-            else:
-                self.ft_skills = [dict(skill=np.random.uniform(0,1,self.skill_dim).astype(np.float32)) for _ in range(len(self.extr_reward_seq))]
-                return 
-        elif self.z_id == "irm_random":
-            assert len(self.extr_reward_seq) == 0
-            skill = self.irm_random_search(bounds).cpu().numpy()
-        elif self.z_id == "irm_cem":
-            skill = self.irm_cem(bounds).cpu().numpy()
-        elif self.z_id == "irm_gradient_descent":
-            skill = self.irm_gradient_descent(bounds).cpu().detach().numpy()
-        elif self.z_id in ["env_rollout", "irm_random_iter", "grid_search", "env_rollout_cem", "env_rollout_iter", "reward_relabel"]:
-            return # need to take env steps
-        else:
-            raise ValueError('Must select a finetuning mode')
-        self.ft_skills = [dict(skill = skill)]
-
-    def get_ft_meta(self, episode_step):
-        if len(self.extr_reward_seq) == 0:
-            return self.ft_skills[0]
-        else:
-            ind = min(episode_step // self.skill_duration, len(self.extr_reward_seq)-1)
-            return self.ft_skills[ind]
-
     def update_meta(self, meta, global_step, time_step):
-        if self.z_id == "random_skill":
+        if self.reward_free:
             if global_step % self.update_skill_every_step == 0:
                 return self.init_meta()
         else:
@@ -372,6 +391,12 @@ class CICAgent(DDPGAgent):
     @torch.no_grad()
     def compute_apt_reward(self, obs, next_obs):
         args = APTArgs()
+        if self.obs_type == "kitchen":
+            obs = obs[:, 9:]
+            next_obs = next_obs[:, 9:]
+        elif self.obs_type == "kitchen_kettle_xy":
+            obs = obs[:, 23:25]
+            next_obs = next_obs[:, 23:25]
         source = self.cic.state_net(obs)
         target = self.cic.state_net(next_obs)
         reward = compute_apt_reward(source, target, args, self.device) # (b,)

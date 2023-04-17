@@ -96,17 +96,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DADSAgent(SACAgent):
     def __init__(self, update_skill_every_step, skill_dim, scale, 
-                 z_id, freeze_rl, freeze_dads, num_seed_frames, action_repeat, 
-                 p, init_rl, pearson_setting, canonical_setting, num_epic_skill, 
-                 pearson_samples, canonical_samples, discount, update_dads_every_steps, 
+                 freeze_rl, freeze_dads, num_seed_frames, action_repeat, 
+                 p, init_rl, discount, update_dads_every_steps, 
                  num_neg_samples, update_rl_every_steps, num_dads_updates, variance, 
-                 num_components, max_batch, distribution, extr_reward, extr_reward_seq, 
+                 num_components, max_batch, distribution,  
                  **kwargs):
         self.skill_dim = skill_dim
         self.update_skill_every_step = update_skill_every_step
         self.update_rl_every_steps = update_rl_every_steps
         self.scale = scale
-        self.z_id = z_id
         self.freeze_rl = freeze_rl
         self.freeze_dads = freeze_dads
         self.init_rl = init_rl
@@ -119,15 +117,8 @@ class DADSAgent(SACAgent):
         kwargs["meta_dim"] = self.skill_dim
 
         # epic args
-        self.pearson_setting = pearson_setting 
-        self.canonical_setting = canonical_setting
-        self.num_epic_skill = num_epic_skill 
-        self.pearson_samples = pearson_samples
-        self.canonical_samples = canonical_samples
         self.discount = discount
         self.compute_epic_rew = self.compute_log_prob_noinfo
-        self.extr_reward = extr_reward 
-        self.extr_reward_seq = extr_reward_seq
 
         # create actor and critic
         super().__init__(**kwargs)
@@ -171,29 +162,8 @@ class DADSAgent(SACAgent):
         meta['skill'] = skill
         return meta
 
-    def find_ft_meta(self, bounds=None):
-        self.extr_rew_fn = self.get_extr_rew()
-        if self.z_id == "random_skill":
-            if len(self.extr_reward_seq) == 0:
-                skill = np.random.uniform(0,1,self.skill_dim).astype(np.float32)
-            else:
-                self.ft_skills = [dict(skill=np.random.uniform(0,1,self.skill_dim).astype(np.float32)) for _ in range(len(self.extr_reward_seq))]
-                return 
-        elif self.z_id == "irm_random":
-            assert len(self.extr_reward_seq) == 0
-            skill = self.irm_random_search(bounds).cpu().numpy()
-        elif self.z_id == "irm_cem":
-            skill = self.irm_cem(bounds).cpu().numpy()
-        elif self.z_id == "irm_gradient_descent":
-            skill = self.irm_gradient_descent(bounds).cpu().detach().numpy()
-        elif self.z_id in ["env_rollout", "irm_random_iter", "grid_search", "env_rollout_cem", "env_rollout_iter"]:
-            return # need to take env steps
-        else:
-            raise ValueError('Must select a finetuning mode')
-        self.ft_skills = [dict(skill = skill)]
-
     def update_meta(self, meta, global_step, time_step):
-        if self.z_id == "random_skill":
+        if self.reward_free:
             if global_step % self.update_skill_every_step == 0:
                 return self.init_meta()
         else:
@@ -350,17 +320,6 @@ class DADSAgent(SACAgent):
                     logger.log_metrics(metrics, self.grad_steps, ty='train')
                     self.grad_steps += 1
         return metrics
-
-
-    def compute_pearson_distance(self, rew_1, rew_2):
-        rew_1 = rew_1 - torch.mean(rew_1)
-        rew_2 = rew_2 - torch.mean(rew_2)
-        var_1 = rew_1**2
-        var_2 = rew_2**2
-        cov = torch.sum(rew_1 * rew_2)
-        corr = cov / (torch.sqrt(torch.sum(var_1) * torch.sum(var_2)))
-        corr = min(corr, 1.0)  
-        return torch.sqrt(0.5 * (1 - corr))
 
     def compute_reward(self, obs, skill, action, next_obs, step, batch_size, obs_dim):
         reward, rew_info = self.compute_intr_reward(obs, torch.unsqueeze(skill, 0),

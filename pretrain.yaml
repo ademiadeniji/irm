@@ -55,7 +55,7 @@ grid_search_size: None
 
 hydra:
   run:
-    dir: ./experiments/pretrain/${experiment_folder}/${experiment_name}
+    dir: ./icml_rebuttal_experiments/pretrain/${experiment_folder}/${experiment_name}
   sweep:
     dir: ./exp_sweep/${now:%Y.%m.%d}/${now:%H%M}_${agent.name}_${experiment}
     subdir: ${hydra.job.num}

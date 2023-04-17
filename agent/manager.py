@@ -153,6 +153,9 @@ class ManagerAgent:
         self.train()
         self.critic_target.train()
 
+        # set some parameters
+        self.skill_dim = self.worker_agent.skill_dim
+
     def train(self, training=True):
         self.training = training
         self.encoder.train(training)
@@ -175,9 +178,6 @@ class ManagerAgent:
     def init_meta(self, skill=None):
         return None
     
-    def find_ft_meta(self, bounds=None):
-        return self.worker_agent.find_ft_meta(bounds=bounds)
-    
     def get_ft_meta(self, episode_step=None):
         return dict(skill=np.zeros(self.worker_agent.skill_dim).astype(np.float32))
     
@@ -192,12 +192,6 @@ class ManagerAgent:
     
     def process_observation(self, obs):
         return self.worker_agent.process_observation(obs) 
-
-    def get_extr_rew(self, episode_step=None):
-        return self.worker_agent.get_extr_rew(episode_step)
-    
-    def get_goal(self):
-        return self.worker_agent.get_goal()
 
     def act(self, obs, meta, step, eval_mode):
         if step % self.skill_duration == 0:

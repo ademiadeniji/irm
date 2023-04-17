@@ -20,6 +20,8 @@ COMMON_EVAL_FORMAT = [('frame', 'F', 'int'), ('step', 'S', 'int'),
                       ('episode_reward', 'R', 'float'),
                       ('total_time', 'T', 'time')]
 
+COMMON_IRM_FORMAT = [('step', 'S', 'int'), ('epic_loss', 'L', 'float')]
+
 class AverageMeter(object):
     def __init__(self):
         self._sum = 0
@@ -50,10 +52,15 @@ class MetersGroup(object):
         for key, meter in self._meters.items():
             if key.startswith('train'):
                 key = key[len('train') + 1:]
+            elif key.startswith('irm'):
+                key = key[len('irm') + 1:] 
             else:
                 key = key[len('eval') + 1:]
             key = key.replace('/', '_')
             data[key] = meter.value()
+            if key == "step":
+                print(meter._sum, meter._count)
+                breakpoint()
         return data
 
     def _remove_old_entries(self, data):
@@ -102,7 +109,12 @@ class MetersGroup(object):
             raise f'invalid format type: {ty}'
 
     def _dump_to_console(self, data, prefix):
-        prefix = colored(prefix, 'yellow' if prefix == 'train' else 'green')
+        if prefix == 'train':
+            prefix = colored(prefix, 'yellow')
+        elif prefix == 'eval':
+            prefix = colored(prefix, 'green')
+        elif prefix == 'irm':
+            prefix = colored(prefix, 'red')
         pieces = [f'| {prefix: <14}']
         for key, disp_key, ty in self._formating:
             value = data.get(key, 0)
@@ -134,6 +146,9 @@ class Logger(object):
         self._eval_mg = MetersGroup(log_dir / 'eval.csv',
                                     formating=COMMON_EVAL_FORMAT,
                                     use_wandb=use_wandb)
+        self._irm_mg = MetersGroup(log_dir / 'irm.csv',
+                                     formating=COMMON_IRM_FORMAT,
+                                     use_wandb=use_wandb)
         if use_tb:
             self._sw = SummaryWriter(str(log_dir / 'tb'))
         else:
@@ -145,11 +160,16 @@ class Logger(object):
             self._sw.add_scalar(key, value, step)
 
     def log(self, key, value, step):
-        assert key.startswith('train') or key.startswith('eval')
+        assert key.startswith('train') or key.startswith('eval') or key.startswith('irm')
         if type(value) == torch.Tensor:
             value = value.item()
         self._try_sw_log(key, value, step)
-        mg = self._train_mg if key.startswith('train') else self._eval_mg
+        if key.startswith('train'):
+            mg = self._train_mg
+        elif key.startswith('irm'):
+            mg = self._irm_mg
+        else:
+            mg = self._eval_mg
         mg.log(key, value)
 
     def plot(self, name, path):
@@ -164,6 +184,8 @@ class Logger(object):
             self._eval_mg.dump(step, 'eval')
         if ty is None or ty == 'train':
             self._train_mg.dump(step, 'train')
+        if ty is None or ty == 'irm':
+            self._irm_mg.dump(step, 'irm')
 
     def log_and_dump_ctx(self, step, ty):
         return LogAndDumpCtx(self, step, ty)

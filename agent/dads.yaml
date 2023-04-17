@@ -45,23 +45,4 @@ freeze_dads: False
 init_critic: true
 init_rl: True # false if train rl from scratch
 
-# extrinsic rewards
-extr_reward: goal_top_right
-extr_reward_seq: []
-# IRM settings
-z_id: ${z_id}
-epic_gradient_descent_steps: ${epic_gradient_descent_steps}
-z_lr: ${z_lr}
-num_cem_iterations: ${num_cem_iterations}
-num_cem_samples: ${num_cem_samples}
-num_cem_elites: ${num_cem_elites}
-learnable_reward_scale: false
-matching_metric: epic # [epic, l2, l1]
-# EPIC settings
-pearson_setting: full_rand # [full_rand, uniform]
-canonical_setting: full_rand # [full_rand, uniform]
-num_epic_skill: 200 # number of skills to sample for any optimization of epic loss
-pearson_samples: 1024 
-canonical_samples: 1024
-
 

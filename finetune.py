@@ -70,14 +70,8 @@ class Workspace:
                                     cfg.action_repeat, cfg.seed, use_custom=cfg.use_custom,
                                     random_reset=cfg.random_reset, time_limit=time_limit)
 
-        
-        assert self.cfg.z_id in ['irm_random', 'irm_cem', 'irm_gradient_descent', 'irm_random_iter', 'random_skill', 'env_rollout', 'env_rollout_cem', 'grid_search', 'env_rollout_iter', 'reward_relabel']
-        self.z_id = self.cfg.z_id
-
-        num_expl_steps = 0
-        self.best_skill = None
-
         # create agent
+        num_expl_steps = 0
         self.agent = make_agent(cfg.obs_type,
                                 self.train_env.observation_spec(),
                                 self.train_env.action_spec(),
@@ -95,23 +89,15 @@ class Workspace:
 
         # get meta specs
         meta_specs = self.agent.get_meta_specs()
+        
         # create replay buffer
         data_specs = (self.train_env.observation_spec(),
                       self.train_env.action_spec(),
                       specs.Array((1,), np.float32, 'reward'),
                       specs.Array((1,), np.float32, 'discount'))
 
-        if os.path.exists(cfg.replay_dir):
-            replay_dir = Path(cfg.replay_dir) / 'buffer'
-        else:
-            replay_dir = self.work_dir / 'buffer'
-
-        # create data storage
-        self.replay_storage = ReplayBufferStorage(data_specs, meta_specs,
-                                                  replay_dir, cfg.z_id == 'reward_relabel')
-
         # create video recorders
-        if self.cfg.task in ["fetch_push", "fetch_barrier"]:
+        if self.cfg.task in ["fetch_push", "fetch_barrier", "fetch_barrier2"]:
             self.video_recorder = VideoRecorder(
                 self.work_dir if cfg.save_video else None,
                 camera_id= 0 if 'quadruped' not in self.cfg.domain else 2,
@@ -133,75 +119,23 @@ class Workspace:
         self.timer = utils.Timer()
         self._global_step = 0
         self._global_episode = 0
-        self.plot_2d, self.draw_plot = True, True
-        if "plane" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = -140, -140
-            self.xlim2, self.ylim2 = 140, 140
-            self.bounds = dict(min=-128, max=128)
-            self.train_env.step_limit = cfg.time_limit if cfg.use_time_limit else 200
-        elif "fetch_push" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = 0.7, 0.5
-            self.xlim2, self.ylim2 = 1.7, 1.2
-            self.bounds = dict(min=0.5, max=1.7)
-            self.video_recorder = VideoRecorder(
-                self.work_dir if cfg.save_video else None, frame_lst=True)
-            self.train_video_recorder = TrainVideoRecorder(
-                self.work_dir if cfg.save_train_video else None, frame_lst=True)
-            self.train_env.step_limit = self.train_env._max_episode_steps
-        elif "fetch_barrier" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = 0.7, 0.5
-            self.xlim2, self.ylim2 = 1.7, 1.2
-            self.train_env.step_limit = self.train_env.env._max_episode_steps
-            min_th, max_th = torch.zeros(1, 28).to(cfg.device), torch.ones(1, 28).to(cfg.device)
-            min_th[:, 3] = 0.96
-            min_th[:, 4] = 0.5
-            max_th[:, 3] = 1.4
-            max_th[:, 4] = 1
-            self.bounds = {'min': min_th, 'max': max_th}
-        elif "fetch_reach" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = 0.7, 0.5
-            self.xlim2, self.ylim2 = 1.7, 1.2
-            self.plot_2d = False 
-            self.train_env.step_limit = cfg.time_limit if cfg.use_time_limit else 200
-            self.bounds = dict(min=0.5, max=1.7)
-        elif "jaco" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = -1, -1
-            self.xlim2, self.ylim2 = 1, 1
-            self.bounds = dict(min=-1, max=1)
-            self.plot_2d = False
-            self.train_env.step_limit = 125
-        elif "walker" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = -1, -1
-            self.xlim2, self.ylim2 = 0, 1
-            self.bounds = dict(min=-1, max=1)
-            self.train_env.step_limit = self.cfg.time_limit * 4 if cfg.use_time_limit else -1 # fix
-        elif "quadruped" in self.cfg.task:
-            self.draw_plot = True 
-            self.xlim1, self.ylim1 = -1, -1
-            self.xlim2, self.ylim2 = 0, 1
-            self.bounds = dict(min=-1, max=1)
-            self.train_env.step_limit = self.cfg.time_limit * 4 if cfg.use_time_limit else -1 # fix
-        else:
-            self.draw_plot = False
-        if self.draw_plot:
-            self.plot_dir = self.work_dir / 'plot'
-            self.plot_dir.mkdir(exist_ok=True)
 
-        # commonly used vars
-        self.agent.extr_reward_id = 0
-        self.n_rewards = max(1, len(self.agent.extr_reward_seq))
-        self.agent.skill_duration = self.train_env.step_limit // self.n_rewards
-
+        # Initialize IRM module
+        self.irm = hydra.utils.instantiate(cfg.irm)
+        self.setup_plot_parameters()
+        self.irm.init_IRM(self.eval_env, self.agent, cfg.task, self.video_recorder, self.logger)
         if self.cfg.hrl:
             import agent.manager as manager
             self.agent = manager.ManagerAgent(worker_agent=self.agent, obs_shape=self.train_env.observation_spec().shape)
+            self.irm.agent = self.agent
 
+        # create data storage
+        if os.path.exists(cfg.replay_dir):
+            replay_dir = Path(cfg.replay_dir) / 'buffer'
+        else:
+            replay_dir = self.work_dir / 'buffer'
+        self.replay_storage = ReplayBufferStorage(data_specs, meta_specs,
+                                                  replay_dir, cfg.irm.name == 'reward_relabel')
         # create replay buffer
         self.replay_loader, self.replay_buffer = make_replay_loader(self.replay_storage,
                                                 cfg.replay_buffer_size,
@@ -210,6 +144,8 @@ class Workspace:
                                                 False, cfg.nstep, cfg.discount,
                                                 skill_duration=self.agent.skill_duration)
         self._replay_iter = None
+        if self.cfg.irm.name == 'reward_relabel':
+            self.irm.replay_buffer = self.replay_buffer
 
 
     @property
@@ -230,29 +166,20 @@ class Workspace:
             self._replay_iter = iter(self.replay_loader)
         return self._replay_iter
 
-    def get_extr_reward(self, step, reward, prev_obs, curr_obs, action):
-        if "goal" in self.cfg.agent.extr_reward or self.cfg.use_handcrafted_task_reward:
-            # use hand-crafted reward
-            return self.agent.get_extr_rew(step)(prev_obs, curr_obs, action)
-        else: 
-            # hand-crafted reward is not a substitute for true reward
-            return reward
-
     def eval(self, skill=None):
         episode = 1 
-        tls = [self.agent.skill_duration for _ in range(self.n_rewards)]
+        tls = [self.agent.skill_duration for _ in range(self.irm.n_rewards)]
         if self.cfg.hrl:
-            traj_out = self.run_metas([{'skill': None} for _ in range(self.n_rewards)], tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
-        elif "goal" in self.agent.extr_reward and self.n_rewards > 1:
-            traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, extr_reward_lst=range(self.n_rewards), video=True, use_handcrafted=True)
+            traj_out = self.run_metas([{'skill': None} for _ in range(self.irm.n_rewards)], tl_lst=tls, video=True, video_name=str(self.global_frame), use_handcrafted=True)
+        elif "goal" in self.irm.extr_reward[0] and self.irm.n_rewards > 1:
+            traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, video=True, video_name=str(self.global_frame), use_handcrafted=True)
         else:
-            traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, video=True)
-        total_reward, ep_obs, step = traj_out['reward'], traj_out['ep_obs'], traj_out['step']
+            traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tls, video=True, video_name=str(self.global_frame))
+        total_reward_lst, ep_obs, step = traj_out['reward'], traj_out['ep_obs'], traj_out['step']
 
-        if isinstance(total_reward, list):
-            total_reward = sum(total_reward)
+        total_reward = sum(total_reward_lst)
         if isinstance(step, list):
-            step = sum(step)
+            step = step[-1]
         if "barrier" in self.cfg.task:
             # early terminations don't count
             total_reward = total_reward / step 
@@ -264,9 +191,8 @@ class Workspace:
                 log('episode_length', step * self.cfg.action_repeat / episode)
                 log('episode', self.global_episode)
                 log('step', self.global_step)
-                # log('positive_kq', positive_kq_pair)
-                # log('negative_kq', negative_kq_pair)
-                # log('delta_kq', (positive_kq_pair - negative_kq_pair))
+                for i, rew in enumerate(total_reward_lst):
+                    log(f'episode_reward_{i}', rew)
         elif self.cfg.agent.name == "dads":
             # logp, logp_altz = self.eval_dads(ep_obs)
             with self.logger.log_and_dump_ctx(self.global_frame, ty='eval') as log:
@@ -291,8 +217,8 @@ class Workspace:
         # predicates
         train_until_step = utils.Until(self.cfg.num_train_frames,
                                        self.cfg.action_repeat)
-        collect_until_step = utils.Until(self.cfg.frames_to_collect, 
-                                       self.cfg.action_repeat)
+        # collect_until_step = utils.Until(self.cfg.frames_to_collect, 
+        #                                self.cfg.action_repeat)
         seed_until_step = utils.Until(self.cfg.num_seed_frames,
                                       self.cfg.action_repeat)
         eval_every_step = utils.Every(self.cfg.eval_every_frames,
@@ -300,28 +226,18 @@ class Workspace:
 
         episode_step, episode_reward = 0, 0
         time_step = self.train_env.reset()
-        self.agent.find_ft_meta(self.bounds) 
-        if self.cfg.agent.name != "ddpg":
-            if self.cfg.agent.z_id == "env_rollout":
-                self.find_best_skill()
-            if self.cfg.agent.z_id == "env_rollout_cem":
-                self.find_best_skill_cem()
-            elif self.cfg.agent.z_id == "grid_search":
-                self.grid_search()
-            elif self.cfg.agent.z_id == "irm_random_iter":
-                self.irm_random_iter()
-            elif self.cfg.agent.z_id == "env_rollout_iter":
-                self.env_rollout_iter()
-            elif self.cfg.z_id == 'reward_relabel':
-                self.find_best_skill_relabel()
 
-        meta = self.agent.get_ft_meta(episode_step)
+        # Intrinsic Reward Matching
+        self.irm.run_skill_selection() 
+        meta = self.irm.get_ft_meta(episode_step)
+
         self.replay_storage.add(time_step, meta)
         self.train_video_recorder.init(time_step.observation)
         metrics = None
 
         while train_until_step(self.global_step):
-            meta = self.agent.get_ft_meta(episode_step)
+            meta = self.irm.get_ft_meta(episode_step)
+
             if time_step.last():
                 self._global_episode += 1
                 self.train_video_recorder.save(f'{self.global_frame}.mp4')
@@ -343,11 +259,12 @@ class Workspace:
                 # reset env
                 time_step = self.train_env.reset()
 
-                self.replay_storage.add(time_step, meta)
-                self.train_video_recorder.init(time_step.observation)
                 episode_step = 0
                 episode_reward = 0
-
+                meta = self.irm.get_ft_meta(episode_step)
+                self.replay_storage.add(time_step, meta)
+                self.train_video_recorder.init(time_step.observation)
+                
             # try to evaluate
             if eval_every_step(self.global_step):
                 self.logger.log('eval_total_time', self.timer.total_time(),
@@ -373,10 +290,10 @@ class Workspace:
             # take env step
             prev_time_step = time_step
             time_step = self.train_env.step(action)
-            proc_prev_obs = self.agent.process_observation(torch.from_numpy(prev_time_step.observation).unsqueeze(0))[0][0].numpy()
-            proc_obs = self.agent.process_observation(torch.from_numpy(time_step.observation).unsqueeze(0))[0][0].numpy()
-            relevant_reward = self.get_extr_reward(episode_step, time_step.reward, proc_prev_obs, proc_obs, None)
-            time_step = dmc.update_time_step_reward(time_step, relevant_reward) # only important for replay buffer
+            
+            # to avoid additional environment wrapper, IRM deals with changing reward functions (sequential goals)
+            time_step = self.irm.recompute_reward(prev_time_step, time_step, episode_step)
+
             episode_reward += time_step.reward
             if self.cfg.hrl:
                 self.replay_storage.add(time_step, self.agent.meta_action)
@@ -386,191 +303,9 @@ class Workspace:
             episode_step += 1
             self._global_step += 1
 
-    def find_best_skill(self):
-        max_sk, max_rew = None, float('-inf')
-        for i in range(self.cfg.num_env_skill_rollouts):
-            traj_out = self.run_skill(None)
-            if (max_rew < traj_out['reward']):
-                max_rew = traj_out['reward'] 
-                max_sk = traj_out['skill'] 
-        self.agent.ft_skills = [dict(skill=max_sk)]
-    
-    def find_best_skill_cem(self):
-        with torch.no_grad():
-            mean = torch.zeros(self.agent.skill_dim, requires_grad=False, device=self.device) + 0.5
-            std = torch.zeros(self.agent.skill_dim, requires_grad=False, device=self.device) + 0.25
-            for iter in range(self.agent.num_cem_iterations):
-                samples = torch.normal(mean.repeat(self.cfg.num_env_skill_rollouts, 1), std.repeat(self.cfg.num_env_skill_rollouts, 1))
-                rewards = []
-                for sk in range(self.cfg.num_env_skill_rollouts):
-                    if isinstance(self.run_skill(samples[sk])['reward'], float):
-                        rewards.append(self.run_skill(samples[sk])['reward'])
-                    else:
-                        rewards.append(self.run_skill(samples[sk])['reward'].item())
-                sorted_rewards = np.flip(np.argsort(rewards))
-                elite_idxs = sorted_rewards[:self.agent.num_cem_elites]
-                elites = samples[elite_idxs.copy()]
-                mean = torch.mean(elites, dim=0)
-                std = torch.std(elites, dim=0)
-            self.agent.ft_skills = [dict(skill=elites[0].cpu().numpy())]
-    
-    def find_best_skill_relabel(self):
-        print("Loading pretraining data...")
-        self.replay_buffer._load()
-        print("Finished loading pretraining data.")
-        with torch.no_grad():
-            max_sk, max_rew = None, float('-inf')
-            for path, ep in self.replay_buffer._episodes.items():
-                obs_copy = ep['observation'].copy()
-                skill_copy = ep['skill'].copy()
-                if (ep['observation'].shape[0]-1) % self.cfg.update_skill_every_step != 0:
-                    obs_copy = np.concatenate((obs_copy, np.expand_dims(obs_copy[-1], 0)), 0)
-                    skill_copy = np.concatenate((skill_copy, np.expand_dims(skill_copy[-1], 0)), 0)
-                obs, _ = self.agent.process_observation(obs_copy[:-1])
-                next_obs, _ = self.agent.process_observation(obs_copy[1:])
-                skill = skill_copy[1:]
-                reward = self.agent.extr_rew_fn(torch.from_numpy(obs).to(self.cfg.device), torch.from_numpy(next_obs).to(self.cfg.device), skill)
-                reward = reward.squeeze(-1).reshape(-1, self.cfg.update_skill_every_step)
-                reward = torch.sum(reward, -1)
-                rew, sk_idx = torch.max(reward, 0)
-                if rew > max_rew:
-                    max_sk = skill[self.cfg.update_skill_every_step*sk_idx.item()]
-                    max_rew = rew
-            self.agent.ft_skills = [dict(skill=max_sk)]
-            print(f"Best skill in pretraining replay buffer: {max_sk}")
-    
-    def grid_search(self):
-        max_sk, max_rew = None, float('-inf')
-        curr_sk = np.zeros(self.cfg.agent.skill_dim, dtype=np.float32)
-        for i in range(math.floor(1 / self.cfg.grid_search_size) + 1):
-            traj_out = self.run_skill(curr_sk)
-            if (max_rew < traj_out['reward']):
-                max_rew = traj_out['reward'] 
-                max_sk = traj_out['skill']
-            curr_sk = curr_sk + self.cfg.grid_search_size
-        self.agent.ft_skills = [dict(skill=max_sk)]
-
-    def get_epic_obs(self, out, r):
-        if self.cfg.agent.pearson_setting_sequencing == "prev_rollout":
-            epic_obs = np.array(out['ep_obs'][max(r-1, 0)])
-            epic_actions = np.array(out['ep_action'][max(r-1, 0)])
-        if self.cfg.agent.pearson_setting_sequencing == "prev_rollout_last":
-            epic_obs = np.array(out['ep_obs'][max(r-1, 0)])
-            epic_actions = np.array(out['ep_action'][max(r-1, 0)])
-            if r > 1:
-                epic_obs = np.tile(epic_obs[epic_obs.shape[0] // 2:], (2, 1))
-                epic_actions = np.tile(epic_actions[epic_actions.shape[0] // 2:], (2, 1))
-        else:
-            epic_obs = np.array(out['ep_obs'][r])
-            epic_actions = np.array(out['ep_action'][r])
-        obs, next_obs = torch.from_numpy(epic_obs[:-1, :]).to(self.cfg.device), torch.from_numpy(epic_obs[1:, :]).to(self.cfg.device)
-        return obs, next_obs
-
-    def irm_random_iter(self):    
-        best_skills = []
-        tl_lst = [self.agent.skill_duration for _ in range(self.n_rewards)]
-
-        # select first best skill with cfg's pearson / canonical settings
-        self.agent.extr_reward_id = 0
-        min_sk = self.agent.irm_random_search(self.bounds).cpu().numpy()
-        best_skills.append(min_sk)
-
-        # rollout first skill. select second best skill with possibly new canonical setting
-        for r in range(1, self.n_rewards):
-            self.agent.extr_reward_id = r
-            prev_rollout = self.run_skills(best_skills, tl_lst[:r], use_handcrafted=True)
-            obs_th, next_obs_th = self.get_epic_obs(prev_rollout, r-1) # obs from prev rollout
-            
-            # take care of prev_rollout_last
-            min_sk = self.agent.irm_random_search(self.bounds, obs_th, next_obs_th).cpu().numpy()
-            best_skills.append(min_sk)
-
-        self.agent.ft_skills = [dict(skill=sk) for sk in best_skills]
-
-    def env_rollout_iter(self):    
-        best_skills = []
-        tl_lst = [self.agent.skill_duration for _ in range(self.n_rewards)]
-        extr_reward_lst = range(self.n_rewards)
-        num_per_skill = self.cfg.num_env_skill_rollouts // self.n_rewards
-
-        for r in range(self.n_rewards):
-            max_sk, max_rew = None, float('-inf')
-            for i in range(num_per_skill):
-                traj_out = self.run_skills(best_skills + [None], tl_lst[:r+1], extr_reward_lst, use_handcrafted=True)
-                if (max_rew < traj_out['reward'][r]):
-                    max_rew = traj_out['reward'][r] 
-                    max_sk = traj_out['skill'][r] 
-            best_skills.append(max_sk)
-
-        self.agent.ft_skills = [dict(skill=sk) for sk in best_skills]
-
     def run_metas(self, metas, **kwargs):
         skill_lst = [m['skill'] for m in metas]
-        return self.run_skills(skill_lst, **kwargs)
-
-    def run_skills(self, skill_lst, tl_lst, extr_reward_lst=None, **kwargs):
-        out = dict(time_step=self.eval_env.reset(), step=0)
-        final_out = dict()
-        if 'video' in kwargs and kwargs['video'] is True:
-            kwargs['init_video'] = False 
-            self.video_recorder.init(self.eval_env, enabled=True)
-        for idx, (sk, tl) in enumerate(zip(skill_lst, tl_lst)):
-            if extr_reward_lst is not None: 
-                self.agent.extr_reward_id = extr_reward_lst[idx]
-            out = self.run_skill(sk, num_timesteps=tl, time_step=out['time_step'], **kwargs)
-            for key, val in out.items():
-                if key not in final_out:
-                    final_out[key] = [val]
-                else:
-                    final_out[key].append(val)
-        if 'video' in kwargs and kwargs['video'] is True:
-            video_name = f"{self.global_frame}.mp4"
-            self.video_recorder.save(video_name)
-        return final_out 
-
-    def run_skill(self, skill, video=False, init_video=True, video_name=None, num_timesteps=None, time_step=None, use_handcrafted=False, step=0):
-        step, total_reward = step, 0
-        ep_obs, ep_action = [], []
-        meta = self.agent.init_meta(skill)
-
-        if num_timesteps is None:
-            time_step = self.eval_env.reset()
-            ep_obs.append(time_step.observation)
-
-        if init_video:
-            self.video_recorder.init(self.eval_env, enabled=video)
-        while not time_step.last() and (num_timesteps is None or step < num_timesteps):
-            prev_time_step = time_step
-            with torch.no_grad(), utils.eval_mode(self.agent):
-                action = self.agent.act(time_step.observation,
-                                        meta,
-                                        step,
-                                        eval_mode=True)
-            if "fetch" in self.cfg.task:
-                time_step = self.eval_env.step(action, make_video=video)
-            else:
-                time_step = self.eval_env.step(action)
-            self.video_recorder.record(self.eval_env)
-            ep_obs.append(time_step.observation)
-            ep_action.append(action)
-            prev_obs, _ = self.agent.process_observation(torch.from_numpy(prev_time_step.observation).unsqueeze(0).to(self.cfg.device))
-            curr_obs, _ = self.agent.process_observation(torch.from_numpy(time_step.observation).unsqueeze(0).to(self.cfg.device))
-            if use_handcrafted:
-                total_reward += self.agent.get_extr_rew()(prev_obs, curr_obs, None)
-            else:
-                total_reward += self.get_extr_reward(step, time_step.reward, prev_obs, curr_obs, None)
-            step += 1
-        if video:
-            if video_name is None:
-                video_name = f"{self.global_frame}.mp4"
-            self.video_recorder.save(video_name)
-
-        out = dict(ep_obs=ep_obs, ep_action=ep_action, reward=total_reward, step=step, time_step=time_step)
-        if self.cfg.hrl:
-            out['skill'] = self.agent.meta_action
-        elif "skill" in meta:
-            out['skill'] = meta['skill']
-        return out
+        return self.irm.run_skills(skill_lst, **kwargs)
 
     def save_plots(self):
         # run trajectories
@@ -578,15 +313,17 @@ class Workspace:
         eval_until_episode = utils.Until(self.cfg.num_plot)
         all_ep_obs = []
         skill_lst = []
-        tl_lst = [self.agent.skill_duration for _ in range(self.n_rewards)]
+        tl_lst = [self.agent.skill_duration for _ in range(self.irm.n_rewards)]
         while eval_until_episode(episode):
             if episode == 0:
                 if self.cfg.hrl:
-                    traj_out = self.run_metas([self.agent.get_ft_meta()], tl_lst=tl_lst, video=True)
+                    # raise NotImplementedError
+                    traj_out = self.run_metas([{'skill': None} for _ in range(self.irm.n_rewards)], tl_lst=tl_lst)
+                    # traj_out = self.run_metas([self.agent.get_ft_meta()], tl_lst=tl_lst, video=True)
                 else:
-                    traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tl_lst, video=True)
+                    traj_out = self.run_metas(self.agent.ft_skills, tl_lst=tl_lst)
             else: 
-                traj_out = self.run_skills([None for _ in range(self.n_rewards)], tl_lst)
+                traj_out = self.irm.run_skills([None for _ in range(self.irm.n_rewards)], tl_lst)
             ep_obs = np.array(traj_out['ep_obs'])
             ep_obs = ep_obs.reshape(-1, ep_obs.shape[-1])
             all_ep_obs.append(ep_obs)
@@ -594,7 +331,7 @@ class Workspace:
                 # for non-ddpg
                 skill_lst.append(traj_out['skill'])
             episode += 1
-        self.plot_traj(skill_lst, all_ep_obs, str(self.global_frame), title="ft skill (maroon) + others", goal=self.agent.get_goal())
+        self.plot_traj(skill_lst, all_ep_obs, str(self.global_frame), title="ft skill (maroon) + others", goal=self.irm.get_goal())
 
     def plot_traj(self, skills, all_traj, name, style_map=None, title=None, goal=None, labels=None):
         if style_map is None:
@@ -604,9 +341,7 @@ class Workspace:
                         'violet', 'magenta', 'orchid', 'deeppink', 'pink',
                         'gainsboro', 'silver', 'darkgray', 'dimgray', 'black']
             style_map = color_map
-            # for line_style in ['-', '--', '-.', ':']:
-            #   style_map += [(color, line_style) for color in color_map] 
-
+            
         plt.xlim(self.xlim1, self.xlim2)
         plt.ylim(self.ylim1, self.ylim2)
 
@@ -627,9 +362,7 @@ class Workspace:
                 else:
                     plt.plot(traj_coord[:, 0], traj_coord[:, 1], traj_coord[:, 2], c=style_map[i], label=label)
             except:
-                # uneven padding
                 continue
-            
 
         for g in goal:
             if g is None:
@@ -659,10 +392,10 @@ class Workspace:
         total_pairs = 0
 
         # make sure ep_ob is a list of obs 
-        if len(ep_ob) != self.n_rewards:
+        if len(ep_ob) != self.irm.n_rewards:
             ep_ob = [ep_ob]
 
-        for r in range(self.n_rewards):
+        for r in range(self.irm.n_rewards):
             # get skills corresp to reward
             pos_cic_skill = torch.from_numpy(self.agent.ft_skills[r]['skill']).to(self.cfg.device).unsqueeze(0)
             neg_cic_skill = torch.from_numpy(np.random.uniform(0,1,self.cfg.agent.skill_dim).astype(np.float32)).to(self.cfg.device).unsqueeze(0)
@@ -717,6 +450,63 @@ class Workspace:
         with snapshot.open('rb') as f:
             payload = torch.load(f, map_location=f"cuda:{self.cfg.device}")
         return payload
+
+    def setup_plot_parameters(self):
+        self.plot_2d, self.draw_plot = True, True
+        if "plane" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = -140, -140
+            self.xlim2, self.ylim2 = 140, 140
+            self.irm.bounds = dict(min=-128, max=128)
+            self.train_env.step_limit = cfg.time_limit if cfg.use_time_limit else 200
+        elif "fetch_push" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = 0.7, 0.5
+            self.xlim2, self.ylim2 = 1.7, 1.2
+            self.irm.bounds = dict(min=0.5, max=1.7)
+            self.video_recorder = VideoRecorder(
+                self.work_dir if self.cfg.save_video else None, frame_lst=True)
+            self.train_video_recorder = TrainVideoRecorder(
+                self.work_dir if self.cfg.save_train_video else None, frame_lst=True)
+            self.train_env.step_limit = self.train_env._max_episode_steps
+        elif "fetch_barrier" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = 0.7, 0.5
+            self.xlim2, self.ylim2 = 1.7, 1.2
+            self.train_env.step_limit = self.train_env.env._max_episode_steps
+            min_th, max_th = torch.zeros(1, 28).to(self.device), torch.ones(1, 28).to(self.device)
+            min_th[:, 3] = 0.96
+            min_th[:, 4] = 0.5
+            max_th[:, 3] = 1.4
+            max_th[:, 4] = 1
+        elif "fetch_reach" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = 0.7, 0.5
+            self.xlim2, self.ylim2 = 1.7, 1.2
+            self.plot_2d = False 
+            self.train_env.step_limit = self.cfg.time_limit if self.cfg.use_time_limit else 200
+        elif "jaco" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = -1, -1
+            self.xlim2, self.ylim2 = 1, 1
+            self.plot_2d = False
+            self.train_env.step_limit = 125
+        elif "walker" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = -1, -1
+            self.xlim2, self.ylim2 = 0, 1
+            self.train_env.step_limit = self.cfg.time_limit * 4 if self.cfg.use_time_limit else -1 # fix
+        elif "quadruped" in self.cfg.task:
+            self.draw_plot = True 
+            self.xlim1, self.ylim1 = -1, -1
+            self.xlim2, self.ylim2 = 0, 1
+            self.train_env.step_limit = self.cfg.time_limit * 4 if self.cfg.use_time_limit else -1 # fix
+        else:
+            self.draw_plot = False
+        if self.draw_plot:
+            self.plot_dir = self.work_dir / 'plot'
+            self.plot_dir.mkdir(exist_ok=True)
+        self.eval_env.step_limit = self.train_env.step_limit
 
 
 @hydra.main(config_path='.', config_name='finetune')

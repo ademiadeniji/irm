@@ -33,7 +33,7 @@ def load_episode(fn):
 
 
 class ReplayBufferStorage:
-    def __init__(self, data_specs, meta_specs, replay_dir, load_data):
+    def __init__(self, data_specs, meta_specs, replay_dir, load_data=False):
         self._data_specs = data_specs
         self._meta_specs = meta_specs
         self._replay_dir = replay_dir
@@ -43,9 +43,9 @@ class ReplayBufferStorage:
                 raise ValueError("No data to load")
         else:
             if self._replay_dir.exists():
-                raise ValueError("Already data at specified replay dir")
-            else:
-                replay_dir.mkdir()
+                shutil.rmtree(self._replay_dir)
+                # raise ValueError("Already data at specified replay dir")
+            replay_dir.mkdir()
                 
         self._current_episode = defaultdict(list)
         self._num_episodes = 0
@@ -204,7 +204,7 @@ class ReplayBuffer(IterableDataset):
             step_reward = episode['reward'][idx + i]
             if self.skill_duration is not None and not same_reward:
                 ind_past_rew = (idx + i) % self.skill_duration
-                 # "offset" by one for obs and reward (obs <-> idx-1; rew <-> idx)
+                # "offset" by one for obs and reward (obs <-> idx-1; rew <-> idx)
                 if ind_past_rew <= self._nstep and ind_past_rew > 0:
                     step_reward = episode['reward'][idx + i - ind_past_rew]
             reward += discount * step_reward

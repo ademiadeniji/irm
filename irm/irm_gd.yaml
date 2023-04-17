@@ -1,0 +1,32 @@
+# @package irm
+_target_: irm.irm_gd.IRM_GD
+name: irm_gd
+
+epic_gradient_descent_steps: 5000
+z_lr: 5e-2
+
+# extrinsic rewards
+extr_reward: [goal_1p4_0p8]
+use_handcrafted_task_reward: false
+hrl: ${hrl}
+discount: ${discount}
+
+# EPIC settings
+pearson_setting: full_rand # [full_rand, uniform]
+canonical_setting: full_rand # [full_rand, uniform]
+pearson_setting_sequencing: prev_rollout # [prev_rollout, prev_rollout_last]
+canonical_setting_sequencing: gaussian_1 # [gaussian_{float}]
+pearson_samples: 1024 
+canonical_samples: 1024
+noise: 1
+
+# EPIC ablations
+learnable_reward_scale: false
+matching_metric: epic # [epic, l2, l1]
+
+# logging
+print_every_step: 100
+eval_extr_every_step: 100 # for debugging
+
+# misc
+device: ${device}

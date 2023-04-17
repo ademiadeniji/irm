@@ -105,7 +105,7 @@ class Every:
         self._action_repeat = action_repeat
 
     def __call__(self, step):
-        if self._every is None:
+        if self._every is None or self._every < 0:
             return False
         every = self._every // self._action_repeat
         if step % every == 0:
@@ -614,8 +614,7 @@ class jaco_reach(object):
         return torch.exp(-0.5 * (x*scale)**2)
         
 
-def get_extr_rew(rew, device):
-    # global reward
+def get_extr_reward_function(rew, device):
     if rew == "goal_top_right":
         return goal_top_right(device)
     if rew == "goal_top_left":
@@ -633,6 +632,14 @@ def get_extr_rew(rew, device):
             goal = [1.31, 0.9]
         elif rew == "goal_barrier3":
             goal = [1.16, 0.9]
+        elif rew == "goal_barrier4":
+            goal = [1.6, 0.4]
+        elif rew == "goal_tunnel1":
+            goal = [1.21, 0.65]
+        elif rew == "goal_tunnel2":
+            goal = [1.41, 0.65]
+        elif rew == "goal_tunnel3":
+            goal = [1.41, 0.95]
         elif rew == "goal_1_1_0.5":
             goal = [1, 1, 0.5]
         return goal_reward(device, goal)

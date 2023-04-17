@@ -17,7 +17,7 @@ python pretrain.py agent=AGENT domain=DOMAIN experiment_folder=YOUR_EXP_FOLDER e
 To finetune your pretrained agent, run the following command. Make sure to specify the directory of your saved snapshots with `YOUR_EXP_NAME`.
 
 ```sh
-python finetune.py agent=AGENT experiment=YOUR_EXP_NAME task=TASK extr_reward=REWARD restore_snapshot_ts=2000000 restore_snapshot_dir=PATH_TO_PRETRAINED_MODEL
+python finetune.py agent=AGENT irm=IRM_METHOD experiment=YOUR_EXP_NAME task=TASK extr_reward=[REWARD] restore_snapshot_ts=2000000 restore_snapshot_dir=PATH_TO_PRETRAINED_MODEL 
 ```
 
 In addition, we include a visualization script. You can use this script to see detailed insights into the IRM skill selection process. 
@@ -27,7 +27,9 @@ python visualize_irm.py agent=AGENT experiment=YOUR_EXP_NAME domain=DOMAIN resto
 ```
 <img src="imgs/correlation.png" alt="correlation analysis" title="correlation analysis">
 
-For sequential task finetuning (or IRM visualizations), add the flags `extr_reward_seq=[REW1,REW2,REW3]` and `extr_reward=REW1`.
+For sequential task finetuning (or IRM visualizations), add the flags `extr_reward_seq=[REW1,REW2,REW3]`.
+
+We use the IRM class to perform skill selection (`env_rollout`, `irm_cem`, `random_skill`, etc.) and process rewards for sequential goal-reaching environments. To implement a new skill selection method, create a subclass of `IRM` and implement the `run_skill_selection_method` method.
 
 ## Requirements 
 We assume you have access to a GPU that can run CUDA 10.2 and CUDNN 8. Then, the simplest way to install all required dependencies is to create an anaconda environment by running
@@ -73,5 +75,3 @@ A. Adeniji, A. Xie, and P. Abbeel. Skill-based reinforcement learning with intri
 matching, 2022. URL https://arxiv.org/abs/2210.07426.
 ```
 
-### todos
-- add pretrained agent checkpoints for the fetch tasks so researchers can replicate

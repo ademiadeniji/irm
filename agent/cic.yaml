@@ -34,25 +34,3 @@ freeze_rl: False
 freeze_cic: False 
 init_rl: true 
 init_critic: true
-
-# extrinsic rewards
-extr_reward: goal_1p4_0p8
-extr_reward_seq: []
-# IRM settings
-z_id: ${z_id}
-epic_gradient_descent_steps: ${epic_gradient_descent_steps}
-z_lr: ${z_lr}
-num_cem_iterations: ${num_cem_iterations}
-num_cem_samples: ${num_cem_samples}
-num_cem_elites: ${num_cem_elites}
-learnable_reward_scale: ${learnable_reward_scale}
-matching_metric: epic # [epic, l2, l1]
-# EPIC settings
-pearson_setting: full_rand # [full_rand, uniform]
-canonical_setting: full_rand # [full_rand, uniform]
-pearson_setting_sequencing: prev_rollout # [prev_rollout, prev_rollout_last]
-canonical_setting_sequencing: gaussian_1 # [gaussian_{float}]
-num_epic_skill: 5000 # number of skills to sample for any optimization of epic loss
-pearson_samples: 1024 
-canonical_samples: 1024
-noise: 1

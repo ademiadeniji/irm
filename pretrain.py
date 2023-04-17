@@ -15,7 +15,9 @@ import torch
 from dm_env import specs
 
 import dmc
+import gym
 import fetch
+import kitchen
 import utils
 from logger import Logger
 from replay_buffer import ReplayBufferStorage, make_replay_loader, DADSReplayBuffer
@@ -50,6 +52,7 @@ class Workspace:
 
         # create envs
         time_limit = cfg.time_limit if cfg.use_time_limit else None
+
         if 'plane' in cfg.domain:
             self.train_env = plane.make(cfg.domain, cfg.obs_type, cfg.frame_stack, cfg.action_repeat, cfg.seed, time_limit)
             self.eval_env = plane.make(cfg.domain, cfg.obs_type, cfg.frame_stack, cfg.action_repeat, cfg.seed, time_limit)
@@ -58,6 +61,13 @@ class Workspace:
                                     cfg.frame_stack, cfg.action_repeat,
                                     cfg.seed, cfg.random_reset, time_limit)
             self.eval_env = fetch.make(cfg.domain, cfg.obs_type,
+                                    cfg.frame_stack, cfg.action_repeat,
+                                    cfg.seed, cfg.random_reset,time_limit)
+        elif 'kitchen' in cfg.domain:
+            self.train_env = kitchen.make(cfg.domain, cfg.obs_type,
+                                    cfg.frame_stack, cfg.action_repeat,
+                                    cfg.seed, cfg.random_reset, time_limit)
+            self.eval_env = kitchen.make(cfg.domain, cfg.obs_type,
                                     cfg.frame_stack, cfg.action_repeat,
                                     cfg.seed, cfg.random_reset,time_limit)
         else: 
@@ -90,7 +100,7 @@ class Workspace:
         # get meta specs
         meta_specs = self.agent.get_meta_specs()
         # create replay buffer
-        data_specs = (self.train_env.observation_spec(),
+        data_specs = (self.train_env.observation_spec(), 
                       self.train_env.action_spec(),
                       specs.Array((1,), np.float32, 'reward'),
                       specs.Array((1,), np.float32, 'discount'))
@@ -116,11 +126,11 @@ class Workspace:
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None,
             camera_id= 0 if 'quadruped' not in self.cfg.domain else 2,
-            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier'])
+            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier', 'fetch_barrier2'])
         self.train_video_recorder = TrainVideoRecorder(
             self.work_dir if cfg.save_train_video else None,
             camera_id= 0 if 'quadruped' not in self.cfg.domain else 2,
-            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier'])
+            use_wandb=self.cfg.use_wandb, frame_lst= self.cfg.domain in ['fetch_push', 'fetch_barrier', 'fetch_barrier2'])
 
         self.timer = utils.Timer()
         self._global_step = 0
@@ -325,7 +335,6 @@ class Workspace:
         step, episode, total_reward = 0, 0, 0
         ep_obs, ep_action = [], []
         meta = self.agent.init_meta(skill)
-
         time_step = self.eval_env.reset()
         ep_obs.append(time_step.observation)
         self.video_recorder.init(self.eval_env, enabled=video)
@@ -434,7 +443,7 @@ def main(cfg):
     # create logger
     if cfg.use_wandb:
         import omegaconf
-        wandb.init(entity="url",project="0714_plane",group=cfg.experiment_folder,name=cfg.experiment_name,tags=[cfg.experiment_folder], sync_tensorboard=True)
+        wandb.init(entity="USERNAME",project="irm",group=cfg.experiment_folder,name=cfg.experiment_name,tags=[cfg.experiment_folder], sync_tensorboard=True)
         wandb.config = omegaconf.OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True
         )

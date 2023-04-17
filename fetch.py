@@ -98,6 +98,8 @@ def make(name, obs_type, frame_stack, action_repeat, seed, random_reset=False, t
         env = gym.make("FetchPushPrimitives-v1")
     elif 'reach' in name:
         env = gym.make("FetchReach-v1")
+    elif 'barrier2' in name:
+        env = gym.make("FetchBarrier2Primitives-v1")
     elif 'barrier' in name:
         env = gym.make("FetchBarrierPrimitives-v1")
     else:
@@ -108,6 +110,9 @@ def make(name, obs_type, frame_stack, action_repeat, seed, random_reset=False, t
         env._max_episode_steps = time_limit
         env.env.randomize_object = random_reset
 
-    env = RescaleAction(env, min_action=-1.0, max_action=+1.0)
+    try:
+        env = RescaleAction(env, min_action=-1.0, max_action=+1.0)
+    except:
+        env = RescaleAction(env, -1.0, 1.0)
     env = DMEnvWrapper(env, time_limit=time_limit)
     return env
