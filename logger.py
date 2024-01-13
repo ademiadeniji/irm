@@ -60,7 +60,6 @@ class MetersGroup(object):
             data[key] = meter.value()
             if key == "step":
                 print(meter._sum, meter._count)
-                breakpoint()
         return data
 
     def _remove_old_entries(self, data):
